@@ -18,6 +18,8 @@ import (
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/image"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/script"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/server"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/snapshot"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/sshkey"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/storage"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/vpc"
 	"golang.org/x/oauth2"
@@ -127,6 +129,8 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		script.NewScriptResource,
 		server.NewServerResource,
 		image.NewImageResource,
+		snapshot.NewServerSnapshotResource,
+		sshkey.NewSshkeyResource,
 	}
 }
 
@@ -138,6 +142,8 @@ func (p *VpsieProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		script.NewScriptDataSource,
 		server.NewServerDataSource,
 		image.NewImageDataSource,
+		snapshot.NewServerSnapshotDataSource,
+		sshkey.NewSshKeyDataSource,
 	}
 }
 

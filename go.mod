@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.18.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-testing v1.5.1
-	github.com/vpsie/govpsie v0.0.0-20231022205931-0ef06909b727
+	github.com/vpsie/govpsie v0.0.0-20231023205929-448fee46157e
 	golang.org/x/oauth2 v0.7.0
 )
 
