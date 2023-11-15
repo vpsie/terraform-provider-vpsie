@@ -225,7 +225,7 @@ func (s *storageSnapshotResource) Read(ctx context.Context, req resource.ReadReq
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading storage snapshot",
-			"Cloudn't read vpsie storage snapshot identifier "+state.Identifier.ValueString()+": "+err.Error(),
+			"couldn't read vpsie storage snapshot identifier "+state.Identifier.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -266,7 +266,7 @@ func (s *storageSnapshotResource) Delete(ctx context.Context, req resource.Delet
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting storage snapshot",
-			"Cloudn't delete storage snapshot, unexpected error: "+err.Error(),
+			"couldn't delete storage snapshot, unexpected error: "+err.Error(),
 		)
 
 		return
@@ -294,7 +294,7 @@ func (s *storageSnapshotResource) Update(ctx context.Context, req resource.Updat
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error updating storage name",
-				"Cloudn't update storage name, unexpected error: "+err.Error(),
+				"couldn't update storage name, unexpected error: "+err.Error(),
 			)
 
 			return

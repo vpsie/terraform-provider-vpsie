@@ -795,7 +795,7 @@ func (s *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 		resp.Diagnostics.AddError(
 			"Error reading vpsie server",
-			"Cloudn't read vpsie server identifier "+state.Identifier.ValueString()+": "+err.Error(),
+			"couldn't read vpsie server identifier "+state.Identifier.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -897,7 +897,7 @@ func (s *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error updating server hostname",
-				"Cloudn't update server hostname, unexpected error: "+err.Error(),
+				"couldn't update server hostname, unexpected error: "+err.Error(),
 			)
 
 			return
@@ -912,7 +912,7 @@ func (s *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Error starting server",
-					"Cloudn't start server, unexpected error: "+err.Error(),
+					"couldn't start server, unexpected error: "+err.Error(),
 				)
 
 				return
@@ -922,7 +922,7 @@ func (s *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Error stopping server",
-					"Cloudn't stop server, unexpected error: "+err.Error(),
+					"couldn't stop server, unexpected error: "+err.Error(),
 				)
 
 				return
@@ -937,7 +937,7 @@ func (s *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Error locking server",
-					"Cloudn't lock server, unexpected error: "+err.Error(),
+					"couldn't lock server, unexpected error: "+err.Error(),
 				)
 
 				return
@@ -947,7 +947,7 @@ func (s *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 			if err != nil {
 				resp.Diagnostics.AddError(
 					"Error unlocking server",
-					"Cloudn't unlock server, unexpected error: "+err.Error(),
+					"couldn't unlock server, unexpected error: "+err.Error(),
 				)
 
 				return
@@ -962,7 +962,7 @@ func (s *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error updating server sshkey",
-				"Cloudn't update server sshkey, unexpected error: "+err.Error(),
+				"couldn't update server sshkey, unexpected error: "+err.Error(),
 			)
 
 			return
@@ -976,7 +976,7 @@ func (s *serverResource) Update(ctx context.Context, req resource.UpdateRequest,
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error updating server script",
-				"Cloudn't update server script, unexpected error: "+err.Error(),
+				"couldn't update server script, unexpected error: "+err.Error(),
 			)
 
 			return
@@ -1022,7 +1022,7 @@ func (s *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting server",
-			"Cloudn't delete server, unexpected error: "+err.Error(),
+			"couldn't delete server, unexpected error: "+err.Error(),
 		)
 
 		return

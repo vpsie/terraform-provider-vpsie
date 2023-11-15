@@ -254,7 +254,7 @@ func (i *imageResource) Read(ctx context.Context, req resource.ReadRequest, resp
 
 		resp.Diagnostics.AddError(
 			"Error reading vpsie image",
-			"Cloudn't read vpsie image identifier "+state.Identifier.ValueString()+": "+err.Error(),
+			"Could't read vpsie image identifier "+state.Identifier.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -305,7 +305,7 @@ func (i *imageResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting image",
-			"Cloudn't delete image, unexpected error: "+err.Error(),
+			"Couldn't delete image, unexpected error: "+err.Error(),
 		)
 
 		return

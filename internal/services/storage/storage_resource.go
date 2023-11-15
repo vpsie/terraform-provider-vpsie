@@ -258,7 +258,7 @@ func (s *storageResource) Read(ctx context.Context, req resource.ReadRequest, re
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading vpsie storage",
-			"Cloudn't read vpsie storage identifier "+state.Identifier.ValueString()+": "+err.Error(),
+			"couldn't read vpsie storage identifier "+state.Identifier.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -312,7 +312,7 @@ func (s *storageResource) Update(ctx context.Context, req resource.UpdateRequest
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error updating storage name",
-				"Cloudn't update storage name, unexpected error: "+err.Error(),
+				"couldn't update storage name, unexpected error: "+err.Error(),
 			)
 		}
 
@@ -325,7 +325,7 @@ func (s *storageResource) Update(ctx context.Context, req resource.UpdateRequest
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error updating storage size",
-				"Cloudn't update storage size, unexpected error: "+err.Error(),
+				"couldn't update storage size, unexpected error: "+err.Error(),
 			)
 		}
 
@@ -346,7 +346,7 @@ func (s *storageResource) Delete(ctx context.Context, req resource.DeleteRequest
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting storage",
-			"Cloudn't delete storage, unexpected error: "+err.Error(),
+			"couldn't delete storage, unexpected error: "+err.Error(),
 		)
 
 		return

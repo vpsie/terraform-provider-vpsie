@@ -333,7 +333,7 @@ func (v *vpcResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting vpc",
-			"Cloudn't delete vpc, unexpected error: "+err.Error(),
+			"couldn't delete vpc, unexpected error: "+err.Error(),
 		)
 
 		return

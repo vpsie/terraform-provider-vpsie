@@ -116,7 +116,7 @@ func (s *sshkeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating sshkey",
-			"Cloudn't create sshkey, unexpected error: "+err.Error(),
+			"couldn't create sshkey, unexpected error: "+err.Error(),
 		)
 
 		return
@@ -126,7 +126,7 @@ func (s *sshkeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating sshkey",
-			"Cloudn't create sshkey, unexpected error: "+err.Error(),
+			"couldn't create sshkey, unexpected error: "+err.Error(),
 		)
 
 		return
@@ -159,7 +159,7 @@ func (s *sshkeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading vpsie sshkeys",
-			"Cloudn't read vpsie sshkeys identifier "+state.Identifier.ValueString()+": "+err.Error(),
+			"couldn't read vpsie sshkeys identifier "+state.Identifier.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -197,7 +197,7 @@ func (s *sshkeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting sshkey",
-			"Cloudn't delete sshkey, unexpected error: "+err.Error(),
+			"couldn't delete sshkey, unexpected error: "+err.Error(),
 		)
 
 		return

@@ -182,7 +182,7 @@ func (s *scriptResource) Read(ctx context.Context, req resource.ReadRequest, res
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading vpsie scripts",
-			"Cloudn't read vpsie scripts identifier "+state.Identifier.ValueString()+": "+err.Error(),
+			"couldn't read vpsie scripts identifier "+state.Identifier.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -264,7 +264,7 @@ func (s *scriptResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting script",
-			"Cloudn't delete script, unexpected error: "+err.Error(),
+			"couldn't delete script, unexpected error: "+err.Error(),
 		)
 
 		return

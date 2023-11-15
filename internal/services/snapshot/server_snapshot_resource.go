@@ -236,7 +236,7 @@ func (s *serverSnapshotResource) Create(ctx context.Context, req resource.Create
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating vpsie server snapshots",
-			"Cloudn't create vpsie server snapshots "+plan.Name.ValueString()+": "+err.Error(),
+			"couldn't create vpsie server snapshots "+plan.Name.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -245,7 +245,7 @@ func (s *serverSnapshotResource) Create(ctx context.Context, req resource.Create
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating vpsie server snapshots",
-			"Cloudn't create vpsie server snapshots "+plan.Name.ValueString()+": "+err.Error(),
+			"couldn't create vpsie server snapshots "+plan.Name.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -294,7 +294,7 @@ func (s *serverSnapshotResource) Read(ctx context.Context, req resource.ReadRequ
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading vpsie server snapshots",
-			"Cloudn't read vpsie server snapshots identifier "+state.Identifier.ValueString()+": "+err.Error(),
+			"couldn't read vpsie server snapshots identifier "+state.Identifier.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -344,7 +344,7 @@ func (s *serverSnapshotResource) Update(ctx context.Context, req resource.Update
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating vpsie server snapshots",
-			"Cloudn't update vpsie server snapshots "+plan.Identifier.ValueString()+": "+err.Error(),
+			"couldn't update vpsie server snapshots "+plan.Identifier.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -369,7 +369,7 @@ func (s *serverSnapshotResource) Delete(ctx context.Context, req resource.Delete
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting server snapshot",
-			"Cloudn't delete server snapshot, unexpected error: "+err.Error(),
+			"couldn't delete server snapshot, unexpected error: "+err.Error(),
 		)
 
 		return
