@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/vpsie/govpsie"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/image"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/project"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/script"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/server"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/snapshot"
@@ -131,6 +132,7 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		image.NewImageResource,
 		snapshot.NewServerSnapshotResource,
 		sshkey.NewSshkeyResource,
+		project.NewProjectResource,
 	}
 }
 
@@ -144,6 +146,7 @@ func (p *VpsieProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		image.NewImageDataSource,
 		snapshot.NewServerSnapshotDataSource,
 		sshkey.NewSshKeyDataSource,
+		project.NewProjectDataSource,
 	}
 }
 
