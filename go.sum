@@ -194,6 +194,8 @@ github.com/vpsie/govpsie v0.0.0-20231022205931-0ef06909b727 h1:rI7yPutx7fBvAjPGR
 github.com/vpsie/govpsie v0.0.0-20231022205931-0ef06909b727/go.mod h1:AfrfdTSMtJ1D6msuPI5m7olHt4HTIoRY5zx6Atoqgs0=
 github.com/vpsie/govpsie v0.0.0-20231023205929-448fee46157e h1:FfZWC4JhVnDR06U4ZsF5tnKGEi1zfB+YWPP6pcXxyb0=
 github.com/vpsie/govpsie v0.0.0-20231023205929-448fee46157e/go.mod h1:AfrfdTSMtJ1D6msuPI5m7olHt4HTIoRY5zx6Atoqgs0=
+github.com/vpsie/govpsie v0.0.0-20231117121933-5f09d6e0eb91 h1:lwg6dOoYAmtiy9w3pxYl7oH9ranN3WHcecgbtqg8wTc=
+github.com/vpsie/govpsie v0.0.0-20231117121933-5f09d6e0eb91/go.mod h1:AfrfdTSMtJ1D6msuPI5m7olHt4HTIoRY5zx6Atoqgs0=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/zclconf/go-cty v1.14.0 h1:/Xrd39K7DXbHzlisFP9c4pHao4yyf+/Ug9LEz+Y/yhc=
