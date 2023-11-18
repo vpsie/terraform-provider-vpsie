@@ -25,11 +25,11 @@ type domainResource struct {
 }
 
 type domainResourceModel struct {
-	Identifier   types.String `tfsdk:"identifier"`
-	DomainName   types.String `tfsdk:"domain_name"`
-	NsValidated  types.Int64  `tfsdk:"ns_validated"`
-	CreatedOn    types.String `tfsdk:"created_on"`
-	LastCheck    types.String `tfsdk:"last_check"`
+	Identifier        types.String `tfsdk:"identifier"`
+	DomainName        types.String `tfsdk:"domain_name"`
+	NsValidated       types.Int64  `tfsdk:"ns_validated"`
+	CreatedOn         types.String `tfsdk:"created_on"`
+	LastCheck         types.String `tfsdk:"last_check"`
 	ProjectIdentifier types.String `tfsdk:"project_identifier"`
 }
 

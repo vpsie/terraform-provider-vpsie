@@ -1,9 +1,9 @@
 terraform {
-    required_providers {
-        vpsie = {
-            source = "registry.terraform.local/hashicorp/vpsie"
-        }
+  required_providers {
+    vpsie = {
+      source = "registry.terraform.local/hashicorp/vpsie"
     }
+  }
 }
 
 provider "vpsie" {}

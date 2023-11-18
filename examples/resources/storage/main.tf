@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     vpsie = {
-        source = "registry.terraform.local/hashicorp/vpsie"
+      source = "registry.terraform.local/hashicorp/vpsie"
     }
   }
 }
@@ -35,11 +35,11 @@ provider "vpsie" {
 
 
 resource "vpsie_storage_attachement" "attach" {
-  vm_identifier = "2fe50767-521d-11ee-8bba-0050569c68dc"
+  vm_identifier      = "2fe50767-521d-11ee-8bba-0050569c68dc"
   storage_identifier = "af9eb912-5251-11ee-8bba-0050569c68dc"
-  vm_type = "vm"
+  vm_type            = "vm"
 }
 
 output "attach_test" {
-    value = vpsie_storage_attachement.attach
+  value = vpsie_storage_attachement.attach
 }

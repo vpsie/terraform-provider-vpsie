@@ -47,7 +47,7 @@ func (i *projectResource) Metadata(_ context.Context, req resource.MetadataReque
 func (i *projectResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			
+
 			"identifier": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -60,7 +60,7 @@ func (i *projectResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
-			
+
 			"is_default": schema.Int64Attribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
@@ -190,7 +190,6 @@ func (p *projectResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.Name = types.StringValue(project.Name)
 	state.UpdatedAt = types.StringValue(project.UpdatedAt)
 	state.IsDefault = types.Int64Value(int64(project.IsDefault))
-
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)

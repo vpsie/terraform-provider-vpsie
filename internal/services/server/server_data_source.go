@@ -350,111 +350,74 @@ func (s *serverDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	for _, server := range servers {
-		var boxdIsCountId *int64
-		var customPrice *int64
-		var scriptID *string
-		var sshKeyID *string
-		var customIsoID *int64
-		var libIsoID *int64
-
-		if server.BoxdIsCountID != nil {
-			value := int64(*server.BoxdIsCountID)
-			boxdIsCountId = &value
-		}
-
-		if server.CustomPrice != nil {
-			value := int64(*server.CustomPrice)
-			customPrice = &value
-		}
-
-		if server.ScriptID != nil {
-			value := string(*server.ScriptID)
-			scriptID = &value
-		}
-
-		if server.SshKeyID != nil {
-			value := string(*server.SshKeyID)
-			sshKeyID = &value
-		}
-
-		if server.CustomIsoID != nil {
-			value := int64(*server.CustomIsoID)
-			customIsoID = &value
-		}
-
-		if server.LibIsoID != nil {
-			value := int64(*server.LibIsoID)
-			libIsoID = &value
-		}
-
 		serverState := serversModel{
-			ID:                  types.Int64Value(int64(server.ID)),
+			ID:                  types.Int64Value(server.ID),
 			Identifier:          types.StringValue(server.Identifier),
-			UserID:              types.Int64Value(int64(server.UserID)),
-			BoxSizeID:           types.Int64Value(int64(server.BoxSizeID)),
-			BoxImageID:          types.Int64Value(int64(server.BoxImageID)),
-			DataCenterID:        types.Int64Value(int64(server.DataCenterID)),
-			NodeID:              types.Int64Value(int64(server.NodeID)),
-			BoxdIsCountID:       types.Int64PointerValue(boxdIsCountId),
+			UserID:              types.Int64Value(server.UserID),
+			BoxSizeID:           types.Int64Value(server.BoxSizeID),
+			BoxImageID:          types.Int64Value(server.BoxImageID),
+			DataCenterID:        types.Int64Value(server.DataCenterID),
+			NodeID:              types.Int64Value(server.NodeID),
+			BoxdIsCountID:       types.Int64PointerValue(server.BoxdIsCountID),
 			Hostname:            types.StringValue(server.Hostname),
 			DefaultIP:           types.StringValue(server.DefaultIP),
 			DefaultIPv6:         types.StringValue(server.DefaultIPv6),
 			PrivateIP:           types.StringValue(server.PrivateIP),
-			IsAutoBackup:        types.Int64Value(int64(server.IsAutoBackup)),
+			IsAutoBackup:        types.Int64Value(server.IsAutoBackup),
 			BoxVirtualization:   types.StringValue(server.BoxVirtualization),
-			Ram:                 types.Int64Value(int64(server.Ram)),
-			Cpu:                 types.Int64Value(int64(server.Cpu)),
-			Ssd:                 types.Int64Value(int64(server.Ssd)),
-			Traffic:             types.Int64Value(int64(server.Traffic)),
+			Ram:                 types.Int64Value(server.Ram),
+			Cpu:                 types.Int64Value(server.Cpu),
+			Ssd:                 types.Int64Value(server.Ssd),
+			Traffic:             types.Int64Value(server.Traffic),
 			AddedIpAddresses:    types.StringPointerValue(server.AddedIpAddresses),
 			InitialPassword:     types.StringValue(server.InitialPassword),
 			Notes:               types.StringPointerValue(server.Notes),
 			CreatedOn:           types.StringValue(server.CreatedOn),
 			LastUpdated:         types.StringValue(server.LastUpdated),
 			DroppedOn:           types.StringPointerValue(server.DroppedOn),
-			IsActive:            types.Int64Value(int64(server.IsActive)),
-			IsDeleted:           types.Int64Value(int64(server.IsDeleted)),
-			Power:               types.Int64Value(int64(server.Power)),
-			ProjectID:           types.Int64Value(int64(server.ProjectID)),
-			IsCustom:            types.Int64Value(int64(server.IsCustom)),
-			NrAddedIps:          types.Int64Value(int64(server.NrAddedIps)),
-			InPcs:               types.Int64Value(int64(server.InPcs)),
-			CustomPrice:         types.Int64PointerValue(customPrice),
-			PayableLicense:      types.Int64Value(int64(server.PayableLicense)),
+			IsActive:            types.Int64Value(server.IsActive),
+			IsDeleted:           types.Int64Value(server.IsDeleted),
+			Power:               types.Int64Value(server.Power),
+			ProjectID:           types.Int64Value(server.ProjectID),
+			IsCustom:            types.Int64Value(server.IsCustom),
+			NrAddedIps:          types.Int64Value(server.NrAddedIps),
+			InPcs:               types.Int64Value(server.InPcs),
+			CustomPrice:         types.Int64PointerValue(server.CustomPrice),
+			PayableLicense:      types.Int64Value(server.PayableLicense),
 			LastLicensePay:      types.StringPointerValue(server.LastLicensePay),
-			ScriptID:            types.StringPointerValue(scriptID),
-			SshKeyID:            types.StringPointerValue(sshKeyID),
-			IsLocked:            types.Int64Value(int64(server.IsLocked)),
-			IsWorkWithNew:       types.Int64Value(int64(server.IsWorkWithNew)),
-			IsSuspended:         types.Int64Value(int64(server.IsSuspended)),
-			IsTerminated:        types.Int64Value(int64(server.IsTerminated)),
-			OldID:               types.Int64Value(int64(server.OldID)),
-			CustomIsoID:         types.Int64PointerValue(customIsoID),
-			IsIsoImageBootAble:  types.Int64Value(int64(server.IsIsoImageBootAble)),
-			HasSsl:              types.Int64Value(int64(server.HasSsl)),
+			ScriptID:            types.StringPointerValue(server.ScriptID),
+			SshKeyID:            types.StringPointerValue(server.SshKeyID),
+			IsLocked:            types.Int64Value(server.IsLocked),
+			IsWorkWithNew:       types.Int64Value(server.IsWorkWithNew),
+			IsSuspended:         types.Int64Value(server.IsSuspended),
+			IsTerminated:        types.Int64Value(server.IsTerminated),
+			OldID:               types.Int64Value(server.OldID),
+			CustomIsoID:         types.Int64PointerValue(server.CustomIsoID),
+			IsIsoImageBootAble:  types.Int64Value(server.IsIsoImageBootAble),
+			HasSsl:              types.Int64Value(server.HasSsl),
 			LastActionDate:      types.StringPointerValue(server.LastActionDate),
-			IsCreatedFromLegacy: types.Int64Value(int64(server.IsCreatedFromLegacy)),
-			IsSmtpAllowed:       types.Int64Value(int64(server.IsSmtpAllowed)),
-			WeeklyBackup:        types.Int64Value(int64(server.WeeklyBackup)),
-			MonthlyBackup:       types.Int64Value(int64(server.MonthlyBackup)),
-			LibIsoID:            types.Int64PointerValue(libIsoID),
-			DailySnapshot:       types.Int64Value(int64(server.DailySnapshot)),
-			WeeklySnapshot:      types.Int64Value(int64(server.WeeklySnapshot)),
-			MonthlySnapshot:     types.Int64Value(int64(server.MonthlySnapshot)),
-			LastActionInMin:     types.Int64Value(int64(server.LastActionInMin)),
+			IsCreatedFromLegacy: types.Int64Value(server.IsCreatedFromLegacy),
+			IsSmtpAllowed:       types.Int64Value(server.IsSmtpAllowed),
+			WeeklyBackup:        types.Int64Value(server.WeeklyBackup),
+			MonthlyBackup:       types.Int64Value(server.MonthlyBackup),
+			LibIsoID:            types.Int64PointerValue(server.LibIsoID),
+			DailySnapshot:       types.Int64Value(server.DailySnapshot),
+			WeeklySnapshot:      types.Int64Value(server.WeeklySnapshot),
+			MonthlySnapshot:     types.Int64Value(server.MonthlySnapshot),
+			LastActionInMin:     types.Int64Value(server.LastActionInMin),
 			FirstName:           types.StringValue(server.FirstName),
 			LastName:            types.StringValue(server.LastName),
 			Username:            types.StringValue(server.Username),
 			State:               types.StringValue(server.State),
-			IsFipAvailable:      types.Int64Value(int64(server.IsFipAvailable)),
-			IsBucketAvailable:   types.Int64Value(int64(server.IsBucketAvailable)),
+			IsFipAvailable:      types.Int64Value(server.IsFipAvailable),
+			IsBucketAvailable:   types.Int64Value(server.IsBucketAvailable),
 			DcIdentifier:        types.StringValue(server.DcIdentifier),
 			Category:            types.StringValue(server.Category),
 			FullName:            types.StringValue(server.FullName),
 			VmDescription:       types.StringValue(server.VmDescription),
-			BoxesSuspended:      types.Int64Value(int64(server.BoxesSuspended)),
-			IsSataAvailable:     types.Int64Value(int64(server.IsSataAvailable)),
-			IsSsdAvailable:      types.Int64Value(int64(server.IsSsdAvailable)),
+			BoxesSuspended:      types.Int64Value(server.BoxesSuspended),
+			IsSataAvailable:     types.Int64Value(server.IsSataAvailable),
+			IsSsdAvailable:      types.Int64Value(server.IsSsdAvailable),
 			PublicIp:            types.StringPointerValue(server.PublicIp),
 		}
 

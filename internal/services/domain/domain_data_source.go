@@ -16,8 +16,8 @@ type domainDataSource struct {
 }
 
 type domainDataSourceModel struct {
-	Domains []domainsModel   `tfsdk:"domains"`
-	ID  types.String `tfsdk:"id"`
+	Domains []domainsModel `tfsdk:"domains"`
+	ID      types.String   `tfsdk:"id"`
 }
 
 type domainsModel struct {
@@ -27,7 +27,6 @@ type domainsModel struct {
 	CreatedOn   types.String `tfsdk:"created_on"`
 	LastCheck   types.String `tfsdk:"last_check"`
 }
-
 
 // NewDomainDataSource is a helper function to create the data source.
 func NewDomainDataSource() datasource.DataSource {
@@ -88,11 +87,11 @@ func (d *domainDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	for _, domain := range domains {
 		domainState := domainsModel{
-			Identifier:     types.StringValue(domain.Identifier),
-			DomainName:     types.StringValue(domain.DomainName),
-			NsValidated:    types.Int64Value(int64(domain.NsValidated)),
-			CreatedOn:      types.StringValue(domain.CreatedOn),
-			LastCheck:      types.StringValue(domain.LastCheck),
+			Identifier:  types.StringValue(domain.Identifier),
+			DomainName:  types.StringValue(domain.DomainName),
+			NsValidated: types.Int64Value(int64(domain.NsValidated)),
+			CreatedOn:   types.StringValue(domain.CreatedOn),
+			LastCheck:   types.StringValue(domain.LastCheck),
 		}
 
 		state.Domains = append(state.Domains, domainState)
