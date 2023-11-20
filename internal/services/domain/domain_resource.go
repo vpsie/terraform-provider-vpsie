@@ -106,7 +106,7 @@ func (d *domainResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	createDomainReq := govpsie.CreateDomainRequest{
-		VmIdentifier: plan.ProjectIdentifier.ValueString(),
+		ProjectIdentifier: plan.ProjectIdentifier.ValueString(),
 		Domain:       plan.DomainName.ValueString(),
 	}
 
