@@ -38,7 +38,7 @@ type backupsModel struct {
 }
 
 // NewBackupDataSource is a helper function to create the data source.
-func NewBackupDataSource() *backupDataSource {
+func NewBackupDataSource() datasource.DataSource {
 	return &backupDataSource{}
 }
 
