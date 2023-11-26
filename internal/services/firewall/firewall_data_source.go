@@ -96,13 +96,70 @@ type AttachedVM struct {
 }
 
 // NewFirewallDataSource is a helper function to create the data source.
-func NewFirewallDataSource() *firewallDataSource {
+func NewFirewallDataSource() datasource.DataSource {
 	return &firewallDataSource{}
 }
 
 // Metadata returns the data source type name.
 func (g *firewallDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "firewalls"
+}
+
+var common map[string]schema.Attribute = map[string]schema.Attribute{
+	"id": schema.Int64Attribute{
+		Computed: true,
+	},
+	"group_id": schema.Int64Attribute{
+		Computed: true,
+	},
+	"user_id": schema.Int64Attribute{
+		Computed: true,
+	},
+	"action": schema.StringAttribute{
+		Computed: true,
+	},
+	"type": schema.StringAttribute{
+		Computed: true,
+	},
+	"comment": schema.StringAttribute{
+		Computed: true,
+	},
+	"dest": schema.ListAttribute{
+		Computed: true,
+	},
+	"dport": schema.StringAttribute{
+		Computed: true,
+	},
+	"proto": schema.StringAttribute{
+		Computed: true,
+	},
+	"source": schema.ListAttribute{
+		Computed: true,
+	},
+	"sport": schema.StringAttribute{
+		Computed: true,
+	},
+	"enable": schema.Int64Attribute{
+		Computed: true,
+	},
+	"iface": schema.StringAttribute{
+		Computed: true,
+	},
+	"log": schema.StringAttribute{
+		Computed: true,
+	},
+	"macro": schema.StringAttribute{
+		Computed: true,
+	},
+	"identifier": schema.StringAttribute{
+		Computed: true,
+	},
+	"created_on": schema.StringAttribute{
+		Computed: true,
+	},
+	"updated_on": schema.StringAttribute{
+		Computed: true,
+	},
 }
 
 // Schema defines the schema for the data source.
@@ -118,6 +175,107 @@ func (g *firewallDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 					Attributes: map[string]schema.Attribute{
 						"id": schema.Int64Attribute{
 							Computed: true,
+						},
+						"group_id": schema.Int64Attribute{
+							Computed: true,
+						},
+						"user_id": schema.Int64Attribute{
+							Computed: true,
+						},
+						"action": schema.StringAttribute{
+							Computed: true,
+						},
+						"type": schema.StringAttribute{
+							Computed: true,
+						},
+						"comment": schema.StringAttribute{
+							Computed: true,
+						},
+						"dest": schema.ListAttribute{
+							Computed: true,
+						},
+						"dport": schema.StringAttribute{
+							Computed: true,
+						},
+						"proto": schema.StringAttribute{
+							Computed: true,
+						},
+						"source": schema.ListAttribute{
+							Computed: true,
+						},
+						"sport": schema.StringAttribute{
+							Computed: true,
+						},
+						"enable": schema.Int64Attribute{
+							Computed: true,
+						},
+						"iface": schema.StringAttribute{
+							Computed: true,
+						},
+						"log": schema.StringAttribute{
+							Computed: true,
+						},
+						"macro": schema.StringAttribute{
+							Computed: true,
+						},
+						"identifier": schema.StringAttribute{
+							Computed: true,
+						},
+						"created_on": schema.StringAttribute{
+							Computed: true,
+						},
+						"updated_on": schema.StringAttribute{
+							Computed: true,
+						},
+						"inbound_count": schema.Int64Attribute{
+							Computed: true,
+						},
+						"outbound_count": schema.Int64Attribute{
+							Computed: true,
+						},
+						"vms": schema.Int64Attribute{
+							Computed: true,
+						},
+						"created_by": schema.Int64Attribute{
+							Computed: true,
+						},
+						"rules": schema.ListNestedAttribute{
+							Computed: true,
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"inBound": schema.ListNestedAttribute{
+										Computed: true,
+										NestedObject: schema.NestedAttributeObject{
+											Attributes: common,
+										},
+									},
+									"outBound": schema.ListNestedAttribute{
+										Computed: true,
+										NestedObject: schema.NestedAttributeObject{
+											Attributes: common,
+										},
+									},
+								},
+							},
+						},
+						"vms_data": schema.ListNestedAttribute{
+							Computed: true,
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"hostname": schema.StringAttribute{
+										Computed: true,
+									},
+									"identifier": schema.StringAttribute{
+										Computed: true,
+									},
+									"fullname": schema.StringAttribute{
+										Computed: true,
+									},
+									"category": schema.StringAttribute{
+										Computed: true,
+									},
+								},
+							},
 						},
 					},
 				},
@@ -141,9 +299,106 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 	}
 
 	for _, firewall := range firewalls {
+		var rules []FirewallRules
+		var vmsData []VmsData
+
+		for _, rule := range firewall.Rules {
+			var curRule FirewallRules
+			var inBound []InBoundFirewallRules
+			var outBound []OutBoundFirewallRules
+
+			for _, in := range rule.InBound {
+				dest := []types.String{}
+				source := []types.String{}
+				for _, d := range in.Dest {
+					dest = append(dest, types.StringValue(d))
+				}
+				for _, s := range in.Source {
+					source = append(source, types.StringValue(s))
+				}
+
+				inBound = append(inBound, InBoundFirewallRules{
+					ID:         types.Int64Value(int64(in.ID)),
+					GroupID:    types.Int64Value(int64(in.GroupID)),
+					UserID:     types.Int64Value(int64(in.UserID)),
+					Action:     types.StringValue(in.Action),
+					Type:       types.StringValue(in.Type),
+					Comment:    types.StringValue(in.Comment),
+					Dest:       dest,
+					Dport:      types.StringValue(in.Dport),
+					Proto:      types.StringValue(in.Proto),
+					Source:     source,
+					Sport:      types.StringValue(in.Sport),
+					Enable:     types.Int64Value(int64(in.Enable)),
+					Iface:      types.StringValue(in.Iface),
+					Log:        types.StringValue(in.Log),
+					Macro:      types.StringValue(in.Macro),
+					Identifier: types.StringValue(in.Identifier),
+					CreatedOn:  types.StringValue(in.CreatedOn.String()),
+					UpdatedOn:  types.StringValue(in.UpdatedOn.String()),
+				})
+			}
+
+			for _, out := range rule.OutBound {
+				dest := []types.String{}
+				source := []types.String{}
+				for _, d := range out.Dest {
+					dest = append(dest, types.StringValue(d))
+				}
+				for _, s := range out.Source {
+					source = append(source, types.StringValue(s))
+				}
+
+				outBound = append(outBound, OutBoundFirewallRules{
+					ID:         types.Int64Value(int64(out.ID)),
+					GroupID:    types.Int64Value(int64(out.GroupID)),
+					UserID:     types.Int64Value(int64(out.UserID)),
+					Action:     types.StringValue(out.Action),
+					Type:       types.StringValue(out.Type),
+					Comment:    types.StringValue(out.Comment),
+					Dest:       dest,
+					Dport:      types.StringValue(out.Dport),
+					Proto:      types.StringValue(out.Proto),
+					Source:     source,
+					Sport:      types.StringValue(out.Sport),
+					Enable:     types.Int64Value(int64(out.Enable)),
+					Iface:      types.StringValue(out.Iface),
+					Log:        types.StringValue(out.Log),
+					Macro:      types.StringValue(out.Macro),
+					Identifier: types.StringValue(out.Identifier),
+					CreatedOn:  types.StringValue(out.CreatedOn.String()),
+					UpdatedOn:  types.StringValue(out.UpdatedOn.String()),
+				})
+			}
+
+			curRule.InBound = inBound
+			curRule.OutBound = outBound
+
+			rules = append(rules, curRule)
+		}
+
+		for _, vm := range firewall.VmsData {
+			vmsData = append(vmsData, VmsData{
+				Hostname:   types.StringValue(vm.Hostname),
+				Identifier: types.StringValue(vm.Identifier),
+				Fullname:   types.StringValue(vm.Fullname),
+				Category:   types.StringValue(vm.Category),
+			})
+		}
 
 		firewallState := firewallsModel{
-			ID: types.Int64Value(int64(firewall.ID)),
+			ID:            types.Int64Value(int64(firewall.ID)),
+			UserName:      types.StringValue(firewall.UserName),
+			GroupName:     types.StringValue(firewall.GroupName),
+			Identifier:    types.StringValue(firewall.Identifier),
+			CreatedOn:     types.StringValue(firewall.CreatedOn),
+			UpdatedOn:     types.StringValue(firewall.UpdatedOn),
+			InboundCount:  types.Int64Value(int64(firewall.InboundCount)),
+			OutboundCount: types.Int64Value(int64(firewall.OutboundCount)),
+			Vms:           types.Int64Value(int64(firewall.Vms)),
+			CreatedBy:     types.Int64Value(int64(firewall.CreatedBy)),
+			Rules:         rules,
+			VmsData:       vmsData,
 		}
 
 		state.Firewalls = append(state.Firewalls, firewallState)
