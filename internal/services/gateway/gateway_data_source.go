@@ -47,13 +47,13 @@ type AttachedVM struct {
 }
 
 // NewGatewayDataSource is a helper function to create the data source.
-func NewGatewayDataSource() *gatewayDataSource {
+func NewGatewayDataSource() datasource.DataSource {
 	return &gatewayDataSource{}
 }
 
 // Metadata returns the data source type name.
 func (g *gatewayDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "gateways"
+	resp.TypeName = req.ProviderTypeName + "_gateways"
 }
 
 // Schema defines the schema for the data source.

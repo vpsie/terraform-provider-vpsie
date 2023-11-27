@@ -15,6 +15,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/vpsie/govpsie"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/backup"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/domain"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/firewall"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/gateway"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/image"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/project"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/script"
@@ -133,6 +137,10 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		snapshot.NewServerSnapshotResource,
 		sshkey.NewSshkeyResource,
 		project.NewProjectResource,
+		domain.NewDomainResource,
+		gateway.NewGatewayResource,
+		backup.NewBackupResource,
+		firewall.NewFirewallResource,
 	}
 }
 
@@ -147,6 +155,10 @@ func (p *VpsieProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		snapshot.NewServerSnapshotDataSource,
 		sshkey.NewSshKeyDataSource,
 		project.NewProjectDataSource,
+		domain.NewDomainDataSource,
+		gateway.NewGatewayDataSource,
+		backup.NewBackupDataSource,
+		firewall.NewFirewallDataSource,
 	}
 }
 
