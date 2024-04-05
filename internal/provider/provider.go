@@ -20,6 +20,8 @@ import (
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/firewall"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/gateway"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/image"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/kubernetes"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/loadbalancer"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/project"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/script"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/server"
@@ -141,6 +143,8 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		gateway.NewGatewayResource,
 		backup.NewBackupResource,
 		firewall.NewFirewallResource,
+		kubernetes.NewKubernetesResource,
+		loadbalancer.NewLoadbalancerResource,
 	}
 }
 
@@ -159,6 +163,8 @@ func (p *VpsieProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		gateway.NewGatewayDataSource,
 		backup.NewBackupDataSource,
 		firewall.NewFirewallDataSource,
+		kubernetes.NewKubernetesDataSource,
+		loadbalancer.NewLoadbalancerDataSource,
 	}
 }
 
