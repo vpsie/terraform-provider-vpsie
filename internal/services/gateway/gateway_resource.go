@@ -248,7 +248,7 @@ func (g *gatewayResource) Read(ctx context.Context, req resource.ReadRequest, re
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading vpsie gateways",
-			"couldn't read vpsie gateways id "+state.ID.String() +": "+err.Error(),
+			"couldn't read vpsie gateways id "+state.ID.String()+": "+err.Error(),
 		)
 		return
 	}
@@ -340,7 +340,7 @@ func (g *gatewayResource) Update(ctx context.Context, req resource.UpdateRequest
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading vpsie gateways",
-			"couldn't read vpsie gateways id "+state.ID.String() +": "+err.Error(),
+			"couldn't read vpsie gateways id "+state.ID.String()+": "+err.Error(),
 		)
 		return
 	}

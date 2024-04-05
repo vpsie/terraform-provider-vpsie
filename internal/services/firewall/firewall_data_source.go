@@ -318,9 +318,9 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 				}
 
 				inBound = append(inBound, InBoundFirewallRules{
-					ID:         types.Int64Value(int64(in.ID)),
-					GroupID:    types.Int64Value(int64(in.GroupID)),
-					UserID:     types.Int64Value(int64(in.UserID)),
+					ID:         types.Int64Value(in.ID),
+					GroupID:    types.Int64Value(in.GroupID),
+					UserID:     types.Int64Value(in.UserID),
 					Action:     types.StringValue(in.Action),
 					Type:       types.StringValue(in.Type),
 					Comment:    types.StringValue(in.Comment),
@@ -329,7 +329,7 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 					Proto:      types.StringValue(in.Proto),
 					Source:     source,
 					Sport:      types.StringValue(in.Sport),
-					Enable:     types.Int64Value(int64(in.Enable)),
+					Enable:     types.Int64Value(in.Enable),
 					Iface:      types.StringValue(in.Iface),
 					Log:        types.StringValue(in.Log),
 					Macro:      types.StringValue(in.Macro),
@@ -350,9 +350,9 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 				}
 
 				outBound = append(outBound, OutBoundFirewallRules{
-					ID:         types.Int64Value(int64(out.ID)),
-					GroupID:    types.Int64Value(int64(out.GroupID)),
-					UserID:     types.Int64Value(int64(out.UserID)),
+					ID:         types.Int64Value(out.ID),
+					GroupID:    types.Int64Value(out.GroupID),
+					UserID:     types.Int64Value(out.UserID),
 					Action:     types.StringValue(out.Action),
 					Type:       types.StringValue(out.Type),
 					Comment:    types.StringValue(out.Comment),
@@ -361,7 +361,7 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 					Proto:      types.StringValue(out.Proto),
 					Source:     source,
 					Sport:      types.StringValue(out.Sport),
-					Enable:     types.Int64Value(int64(out.Enable)),
+					Enable:     types.Int64Value(out.Enable),
 					Iface:      types.StringValue(out.Iface),
 					Log:        types.StringValue(out.Log),
 					Macro:      types.StringValue(out.Macro),
@@ -387,16 +387,16 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 		}
 
 		firewallState := firewallsModel{
-			ID:            types.Int64Value(int64(firewall.ID)),
+			ID:            types.Int64Value(firewall.ID),
 			UserName:      types.StringValue(firewall.UserName),
 			GroupName:     types.StringValue(firewall.GroupName),
 			Identifier:    types.StringValue(firewall.Identifier),
 			CreatedOn:     types.StringValue(firewall.CreatedOn),
 			UpdatedOn:     types.StringValue(firewall.UpdatedOn),
-			InboundCount:  types.Int64Value(int64(firewall.InboundCount)),
-			OutboundCount: types.Int64Value(int64(firewall.OutboundCount)),
-			Vms:           types.Int64Value(int64(firewall.Vms)),
-			CreatedBy:     types.Int64Value(int64(firewall.CreatedBy)),
+			InboundCount:  types.Int64Value(firewall.InboundCount),
+			OutboundCount: types.Int64Value(firewall.OutboundCount),
+			Vms:           types.Int64Value(firewall.Vms),
+			CreatedBy:     types.Int64Value(firewall.CreatedBy),
 			Rules:         rules,
 			VmsData:       vmsData,
 		}
