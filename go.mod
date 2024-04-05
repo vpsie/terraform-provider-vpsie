@@ -1,6 +1,6 @@
 module github.com/vpsie/terraform-provider-vpsie
 
-go 1.19
+go 1.21
 
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.17.0
