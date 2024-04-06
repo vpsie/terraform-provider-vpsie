@@ -162,7 +162,7 @@ func (l *loadbalancerResource) Schema(ctx context.Context, _ resource.SchemaRequ
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"dcId": schema.StringAttribute{
+			"dc_id": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

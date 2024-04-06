@@ -44,7 +44,7 @@ func NewBackupDataSource() datasource.DataSource {
 
 // Metadata returns the data source type name.
 func (b *backupDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "backups"
+	resp.TypeName = req.ProviderTypeName + "_backups"
 }
 
 // Schema defines the schema for the data source.

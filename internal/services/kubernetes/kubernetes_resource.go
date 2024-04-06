@@ -29,7 +29,7 @@ type kubernetesResource struct {
 type kubernetesResourceModel struct {
 	ClusterName types.String  `tfsdk:"cluster_name"`
 	Identifier  types.String  `tfsdk:"identifier"`
-	Count       types.Int64   `tfsdk:"count"`
+	MasterCount types.Int64   `tfsdk:"count"`
 	CreatedOn   types.String  `tfsdk:"created_on"`
 	UpdatedOn   types.String  `tfsdk:"updated_on"`
 	CreatedBy   types.String  `tfsdk:"created_by"`
@@ -92,7 +92,7 @@ func (k *kubernetesResource) Schema(ctx context.Context, _ resource.SchemaReques
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"count": schema.Int64Attribute{
+			"master_count": schema.Int64Attribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
@@ -314,7 +314,7 @@ func (k *kubernetesResource) Create(ctx context.Context, req resource.CreateRequ
 			plan.Identifier = types.StringValue(k8s.Identifier)
 			plan.ClusterName = types.StringValue(k8s.ClusterName)
 			plan.Color = types.StringValue(k8s.Color)
-			plan.Count = types.Int64Value(int64(k8s.Count))
+			plan.MasterCount = types.Int64Value(int64(k8s.Count))
 			plan.CreatedOn = types.StringValue(k8s.CreatedOn)
 			plan.UpdatedOn = types.StringValue(k8s.UpdatedOn)
 			plan.CreatedBy = types.StringValue(k8s.CreatedBy)
@@ -383,7 +383,7 @@ func (k *kubernetesResource) Read(ctx context.Context, req resource.ReadRequest,
 	state.Identifier = types.StringValue(k8s.Identifier)
 	state.ClusterName = types.StringValue(k8s.ClusterName)
 	state.Color = types.StringValue(k8s.Color)
-	state.Count = types.Int64Value(int64(k8s.Count))
+	state.MasterCount = types.Int64Value(int64(k8s.Count))
 	state.CreatedOn = types.StringValue(k8s.CreatedOn)
 	state.UpdatedOn = types.StringValue(k8s.UpdatedOn)
 	state.CreatedBy = types.StringValue(k8s.CreatedBy)

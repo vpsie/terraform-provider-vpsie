@@ -46,7 +46,7 @@ func NewFirewallResource() resource.Resource {
 }
 
 func (g *firewallResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_gateway"
+	resp.TypeName = req.ProviderTypeName + "_firewall"
 }
 
 var commonResource map[string]schema.Attribute = map[string]schema.Attribute{
@@ -91,6 +91,9 @@ var commonResource map[string]schema.Attribute = map[string]schema.Attribute{
 		PlanModifiers: []planmodifier.List{
 			listplanmodifier.UseStateForUnknown(),
 		},
+		ElementType: types.ListType{
+			ElemType: types.StringType,
+		},
 	},
 	"dport": schema.StringAttribute{
 		Computed: true,
@@ -108,6 +111,9 @@ var commonResource map[string]schema.Attribute = map[string]schema.Attribute{
 		Computed: true,
 		PlanModifiers: []planmodifier.List{
 			listplanmodifier.UseStateForUnknown(),
+		},
+		ElementType: types.ListType{
+			ElemType: types.StringType,
 		},
 	},
 	"sport": schema.StringAttribute{
@@ -221,13 +227,13 @@ func (g *firewallResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"inBound": schema.ListNestedAttribute{
+						"in_bound": schema.ListNestedAttribute{
 							Computed: true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: commonResource,
 							},
 						},
-						"outBound": schema.ListNestedAttribute{
+						"out_bound": schema.ListNestedAttribute{
 							Computed: true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: commonResource,
@@ -302,10 +308,10 @@ func (g *firewallResource) Create(ctx context.Context, req resource.CreateReques
 		for _, inBound := range rule.InBound {
 			dest := []string{}
 			source := []string{}
-			for _, d := range inBound.Dest {
+			for _, d := range inBound.Dest.Elements() {
 				dest = append(dest, d.String())
 			}
-			for _, s := range inBound.Source {
+			for _, s := range inBound.Source.Elements() {
 				source = append(source, s.String())
 			}
 			rulesToCreate = append(rulesToCreate, govpsie.FirewallUpdateReq{
@@ -325,10 +331,10 @@ func (g *firewallResource) Create(ctx context.Context, req resource.CreateReques
 		for _, outBound := range rule.OutBound {
 			dest := []string{}
 			source := []string{}
-			for _, d := range outBound.Dest {
+			for _, d := range outBound.Dest.Elements() {
 				dest = append(dest, d.String())
 			}
-			for _, s := range outBound.Source {
+			for _, s := range outBound.Source.Elements() {
 				source = append(source, s.String())
 			}
 			rulesToCreate = append(rulesToCreate, govpsie.FirewallUpdateReq{
@@ -379,14 +385,17 @@ func (g *firewallResource) Create(ctx context.Context, req resource.CreateReques
 				source = append(source, types.StringValue(s))
 			}
 
+			dest_list, _ := types.ListValueFrom(ctx, types.StringType, dest)
+			source_list, _ := types.ListValueFrom(ctx, types.StringType, source)
+
 			inBound = append(inBound, InBoundFirewallRules{
 				Action:  types.StringValue(in.Action),
 				Type:    types.StringValue(in.Type),
 				Comment: types.StringValue(in.Comment),
-				Dest:    dest,
+				Dest:    dest_list,
 				Dport:   types.StringValue(in.Dport),
 				Proto:   types.StringValue(in.Proto),
-				Source:  source,
+				Source:  source_list,
 				Sport:   types.StringValue(in.Sport),
 				Enable:  types.Int64Value(in.Enable),
 				Macro:   types.StringValue(in.Macro),
@@ -403,14 +412,17 @@ func (g *firewallResource) Create(ctx context.Context, req resource.CreateReques
 				source = append(source, types.StringValue(s))
 			}
 
+			dest_list, _ := types.ListValueFrom(ctx, types.StringType, dest)
+			source_list, _ := types.ListValueFrom(ctx, types.StringType, source)
+
 			outBound = append(outBound, OutBoundFirewallRules{
 				Action:  types.StringValue(out.Action),
 				Type:    types.StringValue(out.Type),
 				Comment: types.StringValue(out.Comment),
-				Dest:    dest,
+				Dest:    dest_list,
 				Dport:   types.StringValue(out.Dport),
 				Proto:   types.StringValue(out.Proto),
-				Source:  source,
+				Source:  source_list,
 				Sport:   types.StringValue(out.Sport),
 				Enable:  types.Int64Value(out.Enable),
 				Macro:   types.StringValue(out.Macro),
@@ -487,14 +499,17 @@ func (g *firewallResource) Read(ctx context.Context, req resource.ReadRequest, r
 				source = append(source, types.StringValue(s))
 			}
 
+			dest_list, _ := types.ListValueFrom(ctx, types.StringType, dest)
+			source_list, _ := types.ListValueFrom(ctx, types.StringType, source)
+
 			inBound = append(inBound, InBoundFirewallRules{
 				Action:  types.StringValue(in.Action),
 				Type:    types.StringValue(in.Type),
 				Comment: types.StringValue(in.Comment),
-				Dest:    dest,
+				Dest:    dest_list,
 				Dport:   types.StringValue(in.Dport),
 				Proto:   types.StringValue(in.Proto),
-				Source:  source,
+				Source:  source_list,
 				Sport:   types.StringValue(in.Sport),
 				Enable:  types.Int64Value(in.Enable),
 				Macro:   types.StringValue(in.Macro),
@@ -511,14 +526,17 @@ func (g *firewallResource) Read(ctx context.Context, req resource.ReadRequest, r
 				source = append(source, types.StringValue(s))
 			}
 
+			dest_list, _ := types.ListValueFrom(ctx, types.StringType, dest)
+			source_list, _ := types.ListValueFrom(ctx, types.StringType, source)
+
 			outBound = append(outBound, OutBoundFirewallRules{
 				Action:  types.StringValue(out.Action),
 				Type:    types.StringValue(out.Type),
 				Comment: types.StringValue(out.Comment),
-				Dest:    dest,
+				Dest:    dest_list,
 				Dport:   types.StringValue(out.Dport),
 				Proto:   types.StringValue(out.Proto),
-				Source:  source,
+				Source:  source_list,
 				Sport:   types.StringValue(out.Sport),
 				Enable:  types.Int64Value(out.Enable),
 				Macro:   types.StringValue(out.Macro),

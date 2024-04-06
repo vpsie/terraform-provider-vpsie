@@ -23,7 +23,7 @@ type kubernetesDataSourceModel struct {
 type kubernetesModel struct {
 	ClusterName  types.String  `tfsdk:"cluster_name"`
 	Identifier   types.String  `tfsdk:"identifier"`
-	Count        types.Int64   `tfsdk:"count"`
+	MasterCount  types.Int64   `tfsdk:"count"`
 	CreatedOn    types.String  `tfsdk:"created_on"`
 	UpdatedOn    types.String  `tfsdk:"updated_on"`
 	CreatedBy    types.String  `tfsdk:"created_by"`
@@ -64,7 +64,7 @@ func (i *kubernetesDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 						"cluster_name": schema.StringAttribute{
 							Computed: true,
 						},
-						"count": schema.Int64Attribute{
+						"master_count": schema.Int64Attribute{
 							Computed: true,
 						},
 						"created_on": schema.StringAttribute{
@@ -122,7 +122,7 @@ func (k *kubernetesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		k8sState := kubernetesModel{
 			Identifier:   types.StringValue(k8s.Identifier),
 			ClusterName:  types.StringValue(k8s.ClusterName),
-			Count:        types.Int64Value(int64(k8s.Count)),
+			MasterCount:  types.Int64Value(int64(k8s.Count)),
 			CreatedOn:    types.StringValue(k8s.CreatedOn),
 			UpdatedOn:    types.StringValue(k8s.UpdatedOn),
 			CreatedBy:    types.StringValue(k8s.CreatedBy),

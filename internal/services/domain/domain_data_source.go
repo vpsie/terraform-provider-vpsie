@@ -35,7 +35,7 @@ func NewDomainDataSource() datasource.DataSource {
 
 // Metadata returns the data source type name.
 func (d *domainDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "domains"
+	resp.TypeName = req.ProviderTypeName + "_domains"
 }
 
 // Schema defines the schema for the data source.

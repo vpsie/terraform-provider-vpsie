@@ -42,45 +42,45 @@ type FirewallRules struct {
 }
 
 type InBoundFirewallRules struct {
-	ID         types.Int64    `tfsdk:"id"`
-	GroupID    types.Int64    `tfsdk:"group_id"`
-	UserID     types.Int64    `tfsdk:"user_id"`
-	Action     types.String   `tfsdk:"action"`
-	Type       types.String   `tfsdk:"type"`
-	Comment    types.String   `tfsdk:"comment"`
-	Dest       []types.String `tfsdk:"dest"`
-	Dport      types.String   `tfsdk:"dport"`
-	Proto      types.String   `tfsdk:"proto"`
-	Source     []types.String `tfsdk:"source,omitempty"`
-	Sport      types.String   `tfsdk:"sport"`
-	Enable     types.Int64    `tfsdk:"enable"`
-	Iface      types.String   `tfsdk:"iface,omitempty"`
-	Log        types.String   `tfsdk:"log,omitempty"`
-	Macro      types.String   `tfsdk:"macro,omitempty"`
-	Identifier types.String   `tfsdk:"identifier"`
-	CreatedOn  types.String   `tfsdk:"created_on"`
-	UpdatedOn  types.String   `tfsdk:"updated_on"`
+	ID         types.Int64  `tfsdk:"id"`
+	GroupID    types.Int64  `tfsdk:"group_id"`
+	UserID     types.Int64  `tfsdk:"user_id"`
+	Action     types.String `tfsdk:"action"`
+	Type       types.String `tfsdk:"type"`
+	Comment    types.String `tfsdk:"comment"`
+	Dest       types.List   `tfsdk:"dest"`
+	Dport      types.String `tfsdk:"dport"`
+	Proto      types.String `tfsdk:"proto"`
+	Source     types.List   `tfsdk:"source,omitempty"`
+	Sport      types.String `tfsdk:"sport"`
+	Enable     types.Int64  `tfsdk:"enable"`
+	Iface      types.String `tfsdk:"iface,omitempty"`
+	Log        types.String `tfsdk:"log,omitempty"`
+	Macro      types.String `tfsdk:"macro,omitempty"`
+	Identifier types.String `tfsdk:"identifier"`
+	CreatedOn  types.String `tfsdk:"created_on"`
+	UpdatedOn  types.String `tfsdk:"updated_on"`
 }
 
 type OutBoundFirewallRules struct {
-	ID         types.Int64    `tfsdk:"id"`
-	GroupID    types.Int64    `tfsdk:"group_id"`
-	UserID     types.Int64    `tfsdk:"user_id"`
-	Action     types.String   `tfsdk:"action"`
-	Type       types.String   `tfsdk:"type"`
-	Comment    types.String   `tfsdk:"comment"`
-	Dest       []types.String `tfsdk:"dest,omitempty"`
-	Dport      types.String   `tfsdk:"dport"`
-	Proto      types.String   `tfsdk:"proto"`
-	Source     []types.String `tfsdk:"source"`
-	Sport      types.String   `tfsdk:"sport"`
-	Enable     types.Int64    `tfsdk:"enable"`
-	Iface      types.String   `tfsdk:"iface,omitempty"`
-	Log        types.String   `tfsdk:"log,omitempty"`
-	Macro      types.String   `tfsdk:"macro,omitempty"`
-	Identifier types.String   `tfsdk:"identifier"`
-	CreatedOn  types.String   `tfsdk:"created_on"`
-	UpdatedOn  types.String   `tfsdk:"updated_on"`
+	ID         types.Int64  `tfsdk:"id"`
+	GroupID    types.Int64  `tfsdk:"group_id"`
+	UserID     types.Int64  `tfsdk:"user_id"`
+	Action     types.String `tfsdk:"action"`
+	Type       types.String `tfsdk:"type"`
+	Comment    types.String `tfsdk:"comment"`
+	Dest       types.List   `tfsdk:"dest,omitempty"`
+	Dport      types.String `tfsdk:"dport"`
+	Proto      types.String `tfsdk:"proto"`
+	Source     types.List   `tfsdk:"source"`
+	Sport      types.String `tfsdk:"sport"`
+	Enable     types.Int64  `tfsdk:"enable"`
+	Iface      types.String `tfsdk:"iface,omitempty"`
+	Log        types.String `tfsdk:"log,omitempty"`
+	Macro      types.String `tfsdk:"macro,omitempty"`
+	Identifier types.String `tfsdk:"identifier"`
+	CreatedOn  types.String `tfsdk:"created_on"`
+	UpdatedOn  types.String `tfsdk:"updated_on"`
 }
 
 type VmsData struct {
@@ -102,7 +102,7 @@ func NewFirewallDataSource() datasource.DataSource {
 
 // Metadata returns the data source type name.
 func (g *firewallDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "firewalls"
+	resp.TypeName = req.ProviderTypeName + "_firewalls"
 }
 
 var common map[string]schema.Attribute = map[string]schema.Attribute{
@@ -125,6 +125,9 @@ var common map[string]schema.Attribute = map[string]schema.Attribute{
 		Computed: true,
 	},
 	"dest": schema.ListAttribute{
+		ElementType: types.ListType{
+			ElemType: types.StringType,
+		},
 		Computed: true,
 	},
 	"dport": schema.StringAttribute{
@@ -134,6 +137,9 @@ var common map[string]schema.Attribute = map[string]schema.Attribute{
 		Computed: true,
 	},
 	"source": schema.ListAttribute{
+		ElementType: types.ListType{
+			ElemType: types.StringType,
+		},
 		Computed: true,
 	},
 	"sport": schema.StringAttribute{
@@ -192,6 +198,9 @@ func (g *firewallDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 							Computed: true,
 						},
 						"dest": schema.ListAttribute{
+							ElementType: types.ListType{
+								ElemType: types.StringType,
+							},
 							Computed: true,
 						},
 						"dport": schema.StringAttribute{
@@ -201,6 +210,9 @@ func (g *firewallDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 							Computed: true,
 						},
 						"source": schema.ListAttribute{
+							ElementType: types.ListType{
+								ElemType: types.StringType,
+							},
 							Computed: true,
 						},
 						"sport": schema.StringAttribute{
@@ -243,13 +255,13 @@ func (g *firewallDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 							Computed: true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
-									"inBound": schema.ListNestedAttribute{
+									"in_bound": schema.ListNestedAttribute{
 										Computed: true,
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: common,
 										},
 									},
-									"outBound": schema.ListNestedAttribute{
+									"out_bound": schema.ListNestedAttribute{
 										Computed: true,
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: common,
@@ -317,6 +329,9 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 					source = append(source, types.StringValue(s))
 				}
 
+				dest_list, _ := types.ListValueFrom(ctx, types.StringType, dest)
+				source_list, _ := types.ListValueFrom(ctx, types.StringType, source)
+
 				inBound = append(inBound, InBoundFirewallRules{
 					ID:         types.Int64Value(in.ID),
 					GroupID:    types.Int64Value(in.GroupID),
@@ -324,10 +339,10 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 					Action:     types.StringValue(in.Action),
 					Type:       types.StringValue(in.Type),
 					Comment:    types.StringValue(in.Comment),
-					Dest:       dest,
+					Dest:       dest_list,
 					Dport:      types.StringValue(in.Dport),
 					Proto:      types.StringValue(in.Proto),
-					Source:     source,
+					Source:     source_list,
 					Sport:      types.StringValue(in.Sport),
 					Enable:     types.Int64Value(in.Enable),
 					Iface:      types.StringValue(in.Iface),
@@ -340,14 +355,9 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 			}
 
 			for _, out := range rule.OutBound {
-				dest := []types.String{}
-				source := []types.String{}
-				for _, d := range out.Dest {
-					dest = append(dest, types.StringValue(d))
-				}
-				for _, s := range out.Source {
-					source = append(source, types.StringValue(s))
-				}
+
+				dest_list, _ := types.ListValueFrom(ctx, types.StringType, out.Dest)
+				source_list, _ := types.ListValueFrom(ctx, types.StringType, out.Source)
 
 				outBound = append(outBound, OutBoundFirewallRules{
 					ID:         types.Int64Value(out.ID),
@@ -356,10 +366,10 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 					Action:     types.StringValue(out.Action),
 					Type:       types.StringValue(out.Type),
 					Comment:    types.StringValue(out.Comment),
-					Dest:       dest,
+					Dest:       dest_list,
 					Dport:      types.StringValue(out.Dport),
 					Proto:      types.StringValue(out.Proto),
-					Source:     source,
+					Source:     source_list,
 					Sport:      types.StringValue(out.Sport),
 					Enable:     types.Int64Value(out.Enable),
 					Iface:      types.StringValue(out.Iface),
