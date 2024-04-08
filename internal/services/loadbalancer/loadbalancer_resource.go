@@ -162,7 +162,7 @@ func (l *loadbalancerResource) Schema(ctx context.Context, _ resource.SchemaRequ
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"dcId": schema.StringAttribute{
+			"dc_id": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -545,7 +545,7 @@ func (l *loadbalancerResource) Create(ctx context.Context, req resource.CreateRe
 					domain.CookieCheck = types.Int64Value(int64(dns.CookieCheck))
 					domain.CookieName = types.StringValue(dns.CookieName)
 					domain.CreatedOn = types.StringValue(dns.CreatedOn.String())
-					domain.BackPort = types.StringValue(string(dns.BackPort))
+					domain.BackPort = types.StringValue(fmt.Sprint(dns.BackPort))
 					domain.DomainID = types.StringValue(dns.DomainID)
 					domain.CheckInterval = types.Int64Value(int64(dns.CheckInterval))
 					domain.FastInterval = types.Int64Value(int64(dns.FastInterval))
@@ -662,7 +662,7 @@ func (l *loadbalancerResource) Read(ctx context.Context, req resource.ReadReques
 			domain.CookieCheck = types.Int64Value(int64(dns.CookieCheck))
 			domain.CookieName = types.StringValue(dns.CookieName)
 			domain.CreatedOn = types.StringValue(dns.CreatedOn.String())
-			domain.BackPort = types.StringValue(string(dns.BackPort))
+			domain.BackPort = types.StringValue(fmt.Sprint(dns.BackPort))
 			domain.DomainID = types.StringValue(dns.DomainID)
 			domain.CheckInterval = types.Int64Value(int64(dns.CheckInterval))
 			domain.FastInterval = types.Int64Value(int64(dns.FastInterval))
@@ -722,7 +722,7 @@ func (l *loadbalancerResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	var rules map[string]LBRule
+	var rules = make(map[string]LBRule)
 	for _, rule := range state.Rules {
 		rules[rule.RuleID.ValueString()] = rule
 	}
@@ -848,9 +848,7 @@ func (l *loadbalancerResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 
-		if _, ok := rules[rule.RuleID.ValueString()]; ok {
-			delete(rules, rule.RuleID.ValueString())
-		}
+		delete(rules, rule.RuleID.ValueString())
 	}
 
 	for _, rule := range rules {

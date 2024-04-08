@@ -21,24 +21,24 @@ type gatewayDataSourceModel struct {
 }
 
 type gatewaysModel struct {
-	ID                   types.Int64   `tfsdk:"id"`
-	DatacenterID         types.Int64   `tfsdk:"datacenter_id"`
-	IPPropertiesID       types.Int64   `tfsdk:"ip_properties_id"`
-	IP                   types.String  `tfsdk:"ip"`
-	IsReserved           types.Int64   `tfsdk:"is_reserved"`
-	IPVersion            types.String  `tfsdk:"ip_version"`
+	ID                   types.Int64  `tfsdk:"id"`
+	DatacenterID         types.Int64  `tfsdk:"datacenter_id"`
+	IPPropertiesID       types.Int64  `tfsdk:"ip_properties_id"`
+	IP                   types.String `tfsdk:"ip"`
+	IsReserved           types.Int64  `tfsdk:"is_reserved"`
+	IPVersion            types.String `tfsdk:"ip_version"`
 	BoxID                types.Int64  `tfsdk:"box_id,omitempty"`
-	IsPrimary            types.Int64   `tfsdk:"is_primary"`
+	IsPrimary            types.Int64  `tfsdk:"is_primary"`
 	Notes                types.String `tfsdk:"notes,omitempty"`
-	UserID               types.Int64   `tfsdk:"user_id"`
-	UpdatedAt            types.String  `tfsdk:"updated_at"`
-	IsGatewayReserved    types.Int64   `tfsdk:"is_gateway_reserved"`
-	IsUserAccountGateway types.Int64   `tfsdk:"is_user_account_gateway"`
-	DatacenterName       types.String  `tfsdk:"datacenter_name"`
-	State                types.String  `tfsdk:"state"`
-	DcIdentifier         types.String  `tfsdk:"dc_identifier"`
-	CreatedBy            types.String  `tfsdk:"created_by"`
-	AttachedVms          []AttachedVM  `tfsdk:"attached_vms"`
+	UserID               types.Int64  `tfsdk:"user_id"`
+	UpdatedAt            types.String `tfsdk:"updated_at"`
+	IsGatewayReserved    types.Int64  `tfsdk:"is_gateway_reserved"`
+	IsUserAccountGateway types.Int64  `tfsdk:"is_user_account_gateway"`
+	DatacenterName       types.String `tfsdk:"datacenter_name"`
+	State                types.String `tfsdk:"state"`
+	DcIdentifier         types.String `tfsdk:"dc_identifier"`
+	CreatedBy            types.String `tfsdk:"created_by"`
+	AttachedVms          []AttachedVM `tfsdk:"attached_vms"`
 }
 
 type AttachedVM struct {
