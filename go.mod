@@ -1,6 +1,6 @@
 module github.com/vpsie/terraform-provider-vpsie
 
-go 1.21
+go 1.21.4
 
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.17.0
@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.20.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-testing v1.6.0
-	github.com/vpsie/govpsie v0.0.0-20231207194444-5582e555121e
+	github.com/vpsie/govpsie v0.0.0-20240420101606-da19aed56073
 	golang.org/x/oauth2 v0.16.0
 )
 

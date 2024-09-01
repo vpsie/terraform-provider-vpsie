@@ -29,7 +29,7 @@ type kubernetesResource struct {
 type kubernetesResourceModel struct {
 	ClusterName types.String  `tfsdk:"cluster_name"`
 	Identifier  types.String  `tfsdk:"identifier"`
-	MasterCount types.Int64   `tfsdk:"count"`
+	MasterCount types.Int64   `tfsdk:"master_count"`
 	CreatedOn   types.String  `tfsdk:"created_on"`
 	UpdatedOn   types.String  `tfsdk:"updated_on"`
 	CreatedBy   types.String  `tfsdk:"created_by"`
@@ -209,21 +209,25 @@ func (k *kubernetesResource) Schema(ctx context.Context, _ resource.SchemaReques
 			}),
 
 			"dc_identifier": schema.StringAttribute{
+				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"resource_identifier": schema.StringAttribute{
+				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"project_identifier": schema.StringAttribute{
+				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"manager_count": schema.Int64Attribute{
+				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
@@ -232,6 +236,7 @@ func (k *kubernetesResource) Schema(ctx context.Context, _ resource.SchemaReques
 				Optional: true,
 			},
 			"vpc_id": schema.Int64Attribute{
+				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
@@ -379,7 +384,6 @@ func (k *kubernetesResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	// Overwrite items with refreshed state
-	state.Identifier = types.StringValue(k8s.Identifier)
 	state.Identifier = types.StringValue(k8s.Identifier)
 	state.ClusterName = types.StringValue(k8s.ClusterName)
 	state.Color = types.StringValue(k8s.Color)
