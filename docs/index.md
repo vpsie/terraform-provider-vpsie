@@ -13,8 +13,8 @@ description: |-
 ## Example Usage
 
 ```terraform
-provider "scaffolding" {
-  # example configuration here
+provider "vpsie" {
+  access_token = var.vpsie_access_token
 }
 ```
 
