@@ -117,7 +117,7 @@ func (s *storageSnapshotDataSource) Schema(_ context.Context, _ datasource.Schem
 func (s *storageSnapshotDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state storageSnapshotDataSourceModel
 
-	storageSnapshots, err := s.client.Storage.ListSnapshots(ctx)
+	storageSnapshots, err := s.client.Storage.ListSnapshots(ctx, nil)
 
 	if err != nil {
 		resp.Diagnostics.AddError(

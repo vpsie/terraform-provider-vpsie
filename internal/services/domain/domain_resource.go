@@ -52,6 +52,9 @@ func (s *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"domain_name": schema.StringAttribute{
 				Required: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"ns_validated": schema.Int64Attribute{
 				Computed: true,
@@ -73,6 +76,9 @@ func (s *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"project_identifier": schema.StringAttribute{
 				Required: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 		},
 	}

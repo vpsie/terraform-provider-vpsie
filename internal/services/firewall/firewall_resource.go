@@ -175,6 +175,12 @@ func (g *firewallResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
+			"group_name": schema.StringAttribute{
+				Required: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
 			"group_id": schema.Int64Attribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{

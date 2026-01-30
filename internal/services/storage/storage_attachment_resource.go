@@ -145,7 +145,7 @@ func (s *storageAttachmentResource) Update(ctx context.Context, req resource.Upd
 }
 
 func (s *storageAttachmentResource) GetStorageSnapshotByIdentifier(ctx context.Context, identifier string) (govpsie.StorageSnapShot, error) {
-	snapshots, err := s.client.Storage.ListSnapshots(ctx)
+	snapshots, err := s.client.Storage.ListSnapshots(ctx, nil)
 	if err != nil {
 		return govpsie.StorageSnapShot{}, err
 	}
