@@ -15,13 +15,19 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/vpsie/govpsie"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/accesstoken"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/backup"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/bucket"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/datacenter"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/domain"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/fip"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/firewall"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/gateway"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/image"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/ip"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/kubernetes"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/loadbalancer"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/monitoring"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/project"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/script"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/server"
@@ -146,6 +152,16 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		kubernetes.NewKubernetesResource,
 		loadbalancer.NewLoadbalancerResource,
 		kubernetes.NewKubernetesGroupResource,
+		fip.NewFipResource,
+		bucket.NewBucketResource,
+		domain.NewDnsRecordResource,
+		domain.NewReverseDnsResource,
+		backup.NewBackupPolicyResource,
+		snapshot.NewSnapshotPolicyResource,
+		monitoring.NewMonitoringRuleResource,
+		accesstoken.NewAccessTokenResource,
+		firewall.NewFirewallAttachmentResource,
+		vpc.NewVpcServerAssignmentResource,
 	}
 }
 
@@ -167,6 +183,14 @@ func (p *VpsieProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		kubernetes.NewKubernetesDataSource,
 		loadbalancer.NewLoadbalancerDataSource,
 		kubernetes.NewKubernetesGroupDataSource,
+		datacenter.NewDatacenterDataSource,
+		fip.NewFipDataSource,
+		bucket.NewBucketDataSource,
+		backup.NewBackupPolicyDataSource,
+		snapshot.NewSnapshotPolicyDataSource,
+		monitoring.NewMonitoringRuleDataSource,
+		accesstoken.NewAccessTokenDataSource,
+		ip.NewIPDataSource,
 	}
 }
 
