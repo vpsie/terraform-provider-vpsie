@@ -1,17 +1,18 @@
-# terraform {
-#   required_providers {
-#     vpsie = {
-#         source = "registry.terraform.local/hashicorp/vpsie"
-#     }
-#   }
-# }
+terraform {
+  required_providers {
+    vpsie = {
+      source = "vpsie/vpsie"
+    }
+  }
+}
 
-# provider "vpsie" {
-#   access_token = "REDACTED-ROTATED-TOKEN"
-# }
+provider "vpsie" {
+  # Authenticates using the VPSIE_ACCESS_TOKEN environment variable.
+  # Alternatively set access_token here (not recommended — keep tokens out of code).
+}
 
-# data "vpsie_storages" "all" {}
+data "vpsie_storages" "all" {}
 
-# output "storages" {
-#     value = data.vpsie_storages.all
-# }
+output "storages" {
+  value = data.vpsie_storages.all
+}

@@ -79,6 +79,25 @@ resource "vpsie_managed_database" "app" {
 }
 ```
 
+A complete, runnable configuration (server group + managed database + registry +
+certificate, with variables and outputs) is in
+[`examples/complete`](./examples/complete). It maps to these resources:
+
+```mermaid
+flowchart TD
+    tag["vpsie_tag"]
+    dc["data.vpsie_datacenters"]
+    grp["vpsie_server_group"]
+    db["vpsie_managed_database"]
+    reg["vpsie_registry"]
+    cert["vpsie_certificate"]
+    dc -. identifier .-> db
+    dc -. identifier .-> reg
+    grp --> out1["outputs: group id"]
+    db --> out2["outputs: db id + admin_password (sensitive)"]
+    reg --> out3["outputs: registry id"]
+```
+
 ## Supported resources & data sources
 
 Every resource has a matching `data` source for lookups unless noted.
@@ -139,22 +158,48 @@ Full, per-attribute documentation for every resource and data source lives in
 [`docs/`](./docs) and on the
 [Terraform Registry](https://registry.terraform.io/providers/vpsie/vpsie/latest/docs).
 
+## Tips & troubleshooting
+
+- **Keep tokens out of code.** Prefer `VPSIE_ACCESS_TOKEN` over a literal
+  `access_token`. The attribute is marked sensitive, so Terraform redacts it in
+  plan output.
+- **Protect your state.** Computed secrets such as
+  `vpsie_managed_database.admin_password` are stored in state. Use an encrypted
+  remote backend and restrict access to it.
+- **Importing existing resources.** Most resources support import by identifier:
+  `terraform import vpsie_server_group.example <identifier>`.
+- **Tag deletion.** The VPSie API has no endpoint to delete a tag definition, so
+  destroying a `vpsie_tag` removes it from state and emits a warning; remove the
+  tag itself from the console if needed.
+- **Scaling managed databases.** Changing `node_count` scales the cluster one
+  node at a time; other attributes force replacement.
+- **Importing certificates.** The API does not return the source `domain_id`, so
+  after `terraform import vpsie_certificate.example <identifier>` set `domain_id`
+  in configuration to match the certificate to avoid a planned replacement.
+- **Server group membership.** Import with the composite id
+  `terraform import vpsie_server_group_member.example <group_identifier>,<vm_identifier>`.
+
 ## Developing the provider
 
+Common tasks are wrapped in the [`GNUmakefile`](GNUmakefile):
+
 ```sh
-# Build
+make            # fmt, lint, build, test
+make build      # compile the provider
+make lint       # golangci-lint v2
+make docs       # regenerate docs from schemas and examples
+make test       # unit/compile tests (no credentials)
+make testacc    # acceptance tests (creates real resources; needs a token)
+make install    # build + install for a local dev override (scripts/local-install.sh)
+```
+
+Or run the underlying commands directly:
+
+```sh
 go build -v .
-
-# Lint (golangci-lint v2)
 golangci-lint run
-
-# Regenerate documentation from schemas and examples
 go generate ./...
-
-# Unit build/tests (no credentials required)
 go test ./...
-
-# Acceptance tests — create real resources; require a token
 TF_ACC=1 VPSIE_ACCESS_TOKEN="your-api-token" go test ./... -v -timeout 120m
 ```
 

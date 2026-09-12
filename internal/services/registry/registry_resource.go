@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -221,19 +222,38 @@ func (r *registryResource) ImportState(ctx context.Context, req resource.ImportS
 	resource.ImportStatePassthroughID(ctx, path.Root("identifier"), req, resp)
 }
 
+// getRegistryByName resolves a just-created registry by name. Registry creation
+// is asynchronous, so it may not appear in the list immediately; this polls with
+// a bounded, context-aware backoff to avoid failing (and orphaning a billable
+// resource) on that race.
 func (r *registryResource) getRegistryByName(ctx context.Context, name string) (*govpsie.Registry, error) {
-	registries, err := r.client.Registry.List(ctx)
-	if err != nil {
-		return nil, err
-	}
+	const attempts = 12
+	var lastErr error
 
-	for i := range registries {
-		if registries[i].Name == name {
-			return &registries[i], nil
+	for attempt := 0; attempt < attempts; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(5 * time.Second):
+			}
 		}
+
+		registries, err := r.client.Registry.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range registries {
+			if registries[i].Name == name {
+				return &registries[i], nil
+			}
+		}
+
+		lastErr = fmt.Errorf("registry %q not found", name)
 	}
 
-	return nil, fmt.Errorf("registry %q not found", name)
+	return nil, lastErr
 }
 
 // findRegistry matches a registry by identifier first, then falls back to name.

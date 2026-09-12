@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/vpsie/govpsie"
@@ -64,6 +65,7 @@ func (s *serverGroupResource) Schema(_ context.Context, _ resource.SchemaRequest
 				MarkdownDescription: "The description of the server group.",
 				Optional:            true,
 				Computed:            true,
+				Default:             stringdefault.StaticString(""),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -135,9 +137,10 @@ func (s *serverGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// Only populate genuinely computed fields; keep the plan's config values so
+	// they never diverge from configuration (which would force replacement of
+	// these RequiresReplace attributes).
 	plan.Identifier = types.StringValue(group.Identifier)
-	plan.GroupDescription = types.StringValue(group.GroupDescription)
-	plan.IsDistributed = types.BoolValue(group.IsDistributed)
 	plan.CreatedOn = types.StringValue(group.CreatedOn)
 
 	diags = resp.State.Set(ctx, plan)
@@ -168,9 +171,9 @@ func (s *serverGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	state.GroupName = types.StringValue(group.GroupName)
-	state.GroupDescription = types.StringValue(group.GroupDescription)
-	state.IsDistributed = types.BoolValue(group.IsDistributed)
+	// The group's configurable attributes are immutable (RequiresReplace), so
+	// only the computed created_on is refreshed here; the rest are kept as-is to
+	// avoid spurious diffs if the API normalizes a value.
 	state.CreatedOn = types.StringValue(group.CreatedOn)
 
 	diags = resp.State.Set(ctx, &state)

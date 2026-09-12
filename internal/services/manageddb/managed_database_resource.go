@@ -3,6 +3,7 @@ package manageddb
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -364,17 +365,36 @@ func applyManagedDBDetails(model *managedDBResourceModel, details *govpsie.Manag
 	model.CreatedOn = types.StringValue(details.CreatedOn)
 }
 
+// getClusterByName resolves a just-created cluster by name. Cluster creation is
+// asynchronous, so the cluster may not appear in the list immediately; this
+// polls with a bounded, context-aware backoff to avoid failing (and orphaning a
+// billable resource) on that race.
 func (m *managedDBResource) getClusterByName(ctx context.Context, name string) (*govpsie.ManagedDB, error) {
-	clusters, err := m.client.ManagedDB.List(ctx)
-	if err != nil {
-		return nil, err
-	}
+	const attempts = 12
+	var lastErr error
 
-	for i := range clusters {
-		if clusters[i].ClusterName == name || clusters[i].Nickname == name {
-			return &clusters[i], nil
+	for attempt := 0; attempt < attempts; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(5 * time.Second):
+			}
 		}
+
+		clusters, err := m.client.ManagedDB.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range clusters {
+			if clusters[i].ClusterName == name || clusters[i].Nickname == name {
+				return &clusters[i], nil
+			}
+		}
+
+		lastErr = fmt.Errorf("managed database %q not found", name)
 	}
 
-	return nil, fmt.Errorf("managed database %q not found", name)
+	return nil, lastErr
 }

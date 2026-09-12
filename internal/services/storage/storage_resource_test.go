@@ -10,7 +10,7 @@ import (
 
 func TestAccStorageResource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		ProtoV5ProviderFactories: acctest.TestAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: acctest.TestAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// create and read testing
 			{
@@ -48,7 +48,7 @@ func TestAccStorageResource_Resize(t *testing.T) {
 	var storageName = "test-update"
 
 	resource.ParallelTest(t, resource.TestCase{
-		ProtoV5ProviderFactories: acctest.TestAccProtoV5ProviderFactories,
+		ProtoV6ProviderFactories: acctest.TestAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// create and read testing
 			{

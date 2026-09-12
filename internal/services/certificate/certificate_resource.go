@@ -244,9 +244,12 @@ func (c *certificateResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("identifier"), req, resp)
 }
 
+// applyCertificate maps API fields onto the model. It deliberately does not set
+// cert_name: that is a Required, config-owned attribute, and the API may store a
+// suffixed variant of the requested name — overwriting it would cause an
+// "inconsistent result after apply" error and perpetual replacement.
 func applyCertificate(model *certificateResourceModel, cert *govpsie.Certificate) {
 	model.Identifier = types.StringValue(cert.Identifier)
-	model.CertName = types.StringValue(cert.CertificateName)
 	model.DomainName = types.StringValue(cert.DomainName)
 	model.Issuer = types.StringValue(cert.Issuer)
 	model.Serial = types.StringValue(cert.Serial)

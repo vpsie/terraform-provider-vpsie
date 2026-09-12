@@ -3,7 +3,9 @@ package servergroup
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -13,8 +15,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &serverGroupMemberResource{}
-	_ resource.ResourceWithConfigure = &serverGroupMemberResource{}
+	_ resource.Resource                = &serverGroupMemberResource{}
+	_ resource.ResourceWithConfigure   = &serverGroupMemberResource{}
+	_ resource.ResourceWithImportState = &serverGroupMemberResource{}
 )
 
 type serverGroupMemberResource struct {
@@ -166,4 +169,21 @@ func (s *serverGroupMemberResource) Delete(ctx context.Context, req resource.Del
 
 		return
 	}
+}
+
+// ImportState imports a membership using the composite ID
+// "group_identifier,vm_identifier".
+func (s *serverGroupMemberResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	parts := strings.Split(req.ID, ",")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		resp.Diagnostics.AddError(
+			"Invalid import ID",
+			`Expected import ID in the format "group_identifier,vm_identifier".`,
+		)
+
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("group_identifier"), parts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("vm_identifier"), parts[1])...)
 }
