@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/vpsie/govpsie"
@@ -612,6 +613,10 @@ func (s *serverResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			},
 			"delete_reason": schema.StringAttribute{
 				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString("Destroyed by Terraform"),
+				MarkdownDescription: "Reason recorded with the provider when the server is destroyed. " +
+					"The delete API requires one, so this defaults to `Destroyed by Terraform`.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -1035,13 +1040,22 @@ func (s *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	if state.DeleteReason.IsNull() || state.Password.IsNull() || state.DeleteReason.ValueString() == "" || state.Password.ValueString() == "" {
+	// The delete API authenticates the destroy with the server's password, so a
+	// server created without one cannot be destroyed through the provider.
+	if state.Password.IsNull() || state.Password.ValueString() == "" {
 		resp.Diagnostics.AddError(
-			"Error deleting server",
-			"Delete reason and password are required to delete server",
+			"Cannot delete server without a password",
+			fmt.Sprintf("The VPSIE delete API requires the server's password, but %q has none recorded in state. "+
+				"Set `password` on the resource and apply before destroying, or remove the server from state with "+
+				"`terraform state rm` and delete it from the VPSIE console.", state.Hostname.ValueString()),
 		)
 
 		return
+	}
+
+	deleteReason := state.DeleteReason.ValueString()
+	if deleteReason == "" {
+		deleteReason = "Destroyed by Terraform"
 	}
 
 	var deleteNote string
@@ -1050,7 +1064,7 @@ func (s *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	} else {
 		deleteNote = state.DeleteNote.ValueString()
 	}
-	err := s.client.Server.DeleteServer(ctx, state.Identifier.ValueString(), state.Password.ValueString(), state.DeleteReason.ValueString(), deleteNote)
+	err := s.client.Server.DeleteServer(ctx, state.Identifier.ValueString(), state.Password.ValueString(), deleteReason, deleteNote)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting server",

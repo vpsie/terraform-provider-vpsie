@@ -48,7 +48,7 @@ resource "vpsie_server" "example" {
 - `custom_iso_id` (Number)
 - `custom_price` (Number)
 - `delete_note` (String)
-- `delete_reason` (String)
+- `delete_reason` (String) Reason recorded with the provider when the server is destroyed. The delete API requires one, so this defaults to `Destroyed by Terraform`.
 - `dropped_on` (String)
 - `last_action_date` (String)
 - `last_license_pay` (String)
