@@ -24,17 +24,17 @@ type bucketResource struct {
 }
 
 type bucketResourceModel struct {
-	Identifier  types.String `tfsdk:"identifier"`
-	BucketName  types.String `tfsdk:"bucket_name"`
-	ProjectID   types.String `tfsdk:"project_id"`
+	Identifier   types.String `tfsdk:"identifier"`
+	BucketName   types.String `tfsdk:"bucket_name"`
+	ProjectID    types.String `tfsdk:"project_id"`
 	DataCenterID types.String `tfsdk:"datacenter_id"`
-	FileListing types.Bool   `tfsdk:"file_listing"`
-	AccessKey   types.String `tfsdk:"access_key"`
-	SecretKey   types.String `tfsdk:"secret_key"`
-	EndPoint    types.String `tfsdk:"endpoint"`
-	State       types.String `tfsdk:"state"`
-	CreatedBy   types.String `tfsdk:"created_by"`
-	CreatedOn   types.String `tfsdk:"created_on"`
+	FileListing  types.Bool   `tfsdk:"file_listing"`
+	AccessKey    types.String `tfsdk:"access_key"`
+	SecretKey    types.String `tfsdk:"secret_key"`
+	EndPoint     types.String `tfsdk:"endpoint"`
+	State        types.String `tfsdk:"state"`
+	CreatedBy    types.String `tfsdk:"created_by"`
+	CreatedOn    types.String `tfsdk:"created_on"`
 }
 
 func NewBucketResource() resource.Resource {

@@ -15,7 +15,7 @@ type bucketDataSource struct {
 }
 
 type bucketDataSourceModel struct {
-	ID      types.String   `tfsdk:"id"`
+	ID      types.String  `tfsdk:"id"`
 	Buckets []bucketModel `tfsdk:"buckets"`
 }
 

@@ -52,10 +52,10 @@ func (d *monitoringRuleDataSource) Schema(_ context.Context, _ datasource.Schema
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"identifier": schema.StringAttribute{Computed: true},
-						"rule_name":  schema.StringAttribute{Computed: true},
-						"metric_type": schema.StringAttribute{Computed: true},
-						"condition":   schema.StringAttribute{Computed: true},
+						"identifier":     schema.StringAttribute{Computed: true},
+						"rule_name":      schema.StringAttribute{Computed: true},
+						"metric_type":    schema.StringAttribute{Computed: true},
+						"condition":      schema.StringAttribute{Computed: true},
 						"threshold_type": schema.StringAttribute{Computed: true},
 						"threshold":      schema.Int64Attribute{Computed: true},
 						"period":         schema.Int64Attribute{Computed: true},

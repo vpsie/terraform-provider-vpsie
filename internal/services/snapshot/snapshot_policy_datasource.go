@@ -15,7 +15,7 @@ type snapshotPolicyDataSource struct {
 }
 
 type snapshotPolicyDataSourceModel struct {
-	ID       types.String                `tfsdk:"id"`
+	ID       types.String              `tfsdk:"id"`
 	Policies []snapshotPolicyListModel `tfsdk:"policies"`
 }
 

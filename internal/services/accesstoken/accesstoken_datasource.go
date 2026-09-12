@@ -15,7 +15,7 @@ type accessTokenDataSource struct {
 }
 
 type accessTokenDataSourceModel struct {
-	ID     types.String         `tfsdk:"id"`
+	ID     types.String       `tfsdk:"id"`
 	Tokens []accessTokenModel `tfsdk:"tokens"`
 }
 

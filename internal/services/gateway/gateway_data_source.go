@@ -155,7 +155,7 @@ func (g *gatewayDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	for _, gateway := range gateways {
 		attached := []AttachedVM{}
-		if gateway.AttachedVms != nil && len(gateway.AttachedVms) > 0 {
+		if len(gateway.AttachedVms) > 0 {
 			for _, vm := range gateway.AttachedVms {
 				attached = append(attached, AttachedVM{
 					Identifier:       types.StringValue(vm.Identifier),

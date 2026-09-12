@@ -255,7 +255,7 @@ func (g *gatewayResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	// Overwrite items with refreshed state
 	attached := []AttachedVM{}
-	if gateway.AttachedVms != nil && len(gateway.AttachedVms) > 0 {
+	if len(gateway.AttachedVms) > 0 {
 		for _, vm := range gateway.AttachedVms {
 			attached = append(attached, AttachedVM{
 				Identifier:       types.StringValue(vm.Identifier),
@@ -346,7 +346,7 @@ func (g *gatewayResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	attached := []AttachedVM{}
-	if gateway.AttachedVms != nil && len(gateway.AttachedVms) > 0 {
+	if len(gateway.AttachedVms) > 0 {
 		for _, vm := range gateway.AttachedVms {
 			attached = append(attached, AttachedVM{
 				Identifier:       types.StringValue(vm.Identifier),

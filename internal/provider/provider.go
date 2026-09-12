@@ -18,6 +18,7 @@ import (
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/accesstoken"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/backup"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/bucket"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/certificate"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/datacenter"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/domain"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/fip"
@@ -27,13 +28,17 @@ import (
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/ip"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/kubernetes"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/loadbalancer"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/manageddb"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/monitoring"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/project"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/registry"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/script"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/server"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/servergroup"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/snapshot"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/sshkey"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/storage"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/tag"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/vpc"
 	"golang.org/x/oauth2"
 )
@@ -65,10 +70,16 @@ func (p *VpsieProvider) Metadata(ctx context.Context, req provider.MetadataReque
 
 func (p *VpsieProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "The VPSie provider is used to manage resources on the " +
+			"[VPSie](https://vpsie.com) cloud platform. Configure it with an API access " +
+			"token, then use the resources and data sources to manage servers, storage, " +
+			"networking, Kubernetes, databases and more.",
 		Attributes: map[string]schema.Attribute{
 			"access_token": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
-				Optional:            true,
+				MarkdownDescription: "The VPSie API access token used to authenticate requests. " +
+					"May also be provided via the `VPSIE_ACCESS_TOKEN` environment variable.",
+				Optional:  true,
+				Sensitive: true,
 			},
 		},
 	}
@@ -162,6 +173,12 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		accesstoken.NewAccessTokenResource,
 		firewall.NewFirewallAttachmentResource,
 		vpc.NewVpcServerAssignmentResource,
+		tag.NewTagResource,
+		certificate.NewCertificateResource,
+		servergroup.NewServerGroupResource,
+		servergroup.NewServerGroupMemberResource,
+		registry.NewRegistryResource,
+		manageddb.NewManagedDatabaseResource,
 	}
 }
 
@@ -191,6 +208,11 @@ func (p *VpsieProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		monitoring.NewMonitoringRuleDataSource,
 		accesstoken.NewAccessTokenDataSource,
 		ip.NewIPDataSource,
+		tag.NewTagDataSource,
+		certificate.NewCertificateDataSource,
+		servergroup.NewServerGroupDataSource,
+		registry.NewRegistryDataSource,
+		manageddb.NewManagedDatabaseDataSource,
 	}
 }
 
