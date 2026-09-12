@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -81,16 +82,21 @@ func (s *storageResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"size": schema.Int64Attribute{
-				Required: true,
+				Required:            true,
+				MarkdownDescription: "Size in GB. Resizing is only possible while the volume is attached to a server.",
 			},
 			"storage_type": schema.StringAttribute{
-				Required: true,
+				Required:            true,
+				MarkdownDescription: "Volume type: `SATA`, `SSD`, or `LOCAL`.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"disk_format": schema.StringAttribute{
 				Required: true,
+				MarkdownDescription: "Filesystem to format the volume with: `XFS` or `REFS` (REFS requires size >= 2). " +
+					"Note: the API reports a non-automatic volume's stored format as `MANUAL`; the configured value is " +
+					"preserved in state to avoid drift, so when importing set this to the stored value.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -263,8 +269,8 @@ func (s *storageResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	// Overwrite items with refreshed state
-
+	// Refresh the server-computed fields.
+	state.ID = types.Int64Value(int64(storage.ID))
 	state.BoxID = types.Int64Value(int64(storage.BoxID))
 	state.DiskKey = types.StringValue(storage.DiskKey)
 	state.CreatedOn = types.StringValue(storage.CreatedOn)
@@ -276,13 +282,34 @@ func (s *storageResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.BusNumber = types.Int64Value(int64(storage.BusNumber))
 	state.UserID = types.Int64Value(int64(storage.UserID))
 	state.UserTemplateID = types.Int64Value(int64(storage.UserTemplateID))
-	state.IsAutomatic = types.Int64Value(int64(storage.IsAutomatic))
-	state.StorageType = types.StringValue(storage.StorageType)
-	state.DiskFormat = types.StringValue(storage.DiskFormat)
+	state.StorageID = types.Int64Value(int64(storage.StorageID))
+	// size is faithfully reported by the API (not normalized), so always refresh
+	// it — this surfaces an out-of-band resize without hiding a config change
+	// (the plan still compares config against the refreshed state).
 	state.Size = types.Int64Value(int64(storage.Size))
-	state.Description = types.StringValue(storage.Description)
-	state.DcIdentifier = types.StringValue(storage.DcIdentifier)
-	state.Name = types.StringValue(storage.Name)
+
+	// Keep config-owned values as the user wrote them; the API normalizes some
+	// (e.g. disk_format "XFS" is stored as "MANUAL" for non-automatic volumes),
+	// which would otherwise show as perpetual drift. Populate them from the API
+	// only when state has none (i.e. on import, where the field is null).
+	if state.Name.IsNull() {
+		state.Name = types.StringValue(storage.Name)
+	}
+	if state.Description.IsNull() {
+		state.Description = types.StringValue(storage.Description)
+	}
+	if state.DcIdentifier.IsNull() {
+		state.DcIdentifier = types.StringValue(storage.DcIdentifier)
+	}
+	if state.StorageType.IsNull() {
+		state.StorageType = types.StringValue(storage.StorageType)
+	}
+	if state.DiskFormat.IsNull() {
+		state.DiskFormat = types.StringValue(storage.DiskFormat)
+	}
+	if state.IsAutomatic.IsNull() {
+		state.IsAutomatic = types.Int64Value(int64(storage.IsAutomatic))
+	}
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -294,7 +321,8 @@ func (s *storageResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 // Update updates the resource and sets the updated Terraform state on success.
 func (s *storageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var nameState, sizeState, namePlan, sizePlan, identifier types.String
+	var nameState, namePlan, identifier types.String
+	var sizeState, sizePlan types.Int64
 
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("name"), &nameState)...)
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("size"), &sizeState)...)
@@ -314,22 +342,23 @@ func (s *storageResource) Update(ctx context.Context, req resource.UpdateRequest
 				"Error updating storage name",
 				"couldn't update storage name, unexpected error: "+err.Error(),
 			)
+			return
 		}
 
-		resp.State.SetAttribute(ctx, path.Root("name"), namePlan)
-
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), namePlan)...)
 	}
 
 	if !sizePlan.Equal(sizeState) {
-		err := s.client.Storage.UpdateSize(ctx, identifier.ValueString(), sizePlan.ValueString())
+		err := s.client.Storage.UpdateSize(ctx, identifier.ValueString(), strconv.FormatInt(sizePlan.ValueInt64(), 10))
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error updating storage size",
 				"couldn't update storage size, unexpected error: "+err.Error(),
 			)
+			return
 		}
 
-		resp.State.SetAttribute(ctx, path.Root("size"), sizePlan)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("size"), sizePlan)...)
 	}
 }
 

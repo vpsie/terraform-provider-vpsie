@@ -17,8 +17,8 @@ resource "vpsie_storage" "example" {
   name          = "my-storage"
   dc_identifier = "dc-identifier"
   size          = 50
-  storage_type  = "ssd"
-  disk_format   = "raw"
+  storage_type  = "SATA" # SATA, SSD, or LOCAL
+  disk_format   = "XFS"  # XFS or REFS
   description   = "Example storage volume"
 }
 ```
@@ -30,10 +30,10 @@ resource "vpsie_storage" "example" {
 
 - `dc_identifier` (String)
 - `description` (String)
-- `disk_format` (String)
+- `disk_format` (String) Filesystem to format the volume with: `XFS` or `REFS` (REFS requires size >= 2). Note: the API reports a non-automatic volume's stored format as `MANUAL`; the configured value is preserved in state to avoid drift, so when importing set this to the stored value.
 - `name` (String)
-- `size` (Number)
-- `storage_type` (String)
+- `size` (Number) Size in GB. Resizing is only possible while the volume is attached to a server.
+- `storage_type` (String) Volume type: `SATA`, `SSD`, or `LOCAL`.
 
 ### Optional
 
@@ -55,3 +55,14 @@ resource "vpsie_storage" "example" {
 - `storage_id` (Number)
 - `user_id` (Number)
 - `user_template_id` (Number)
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Storage volumes are imported by their UUID identifier.
+terraform import vpsie_storage.example "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+```

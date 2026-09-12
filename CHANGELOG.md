@@ -16,6 +16,13 @@ FEATURES:
 
 BUG FIXES:
 
+- **`vpsie_storage`:** fixed two defects. Updating the volume (rename or resize)
+  crashed with a value-conversion error because the Int64 `size` attribute was
+  read as a string; and reads overwrote config-owned fields with the API's
+  normalized values (notably `disk_format`, which the API stores as `MANUAL`),
+  causing perpetual drift. Reads now keep the configured values and refresh only
+  computed fields. The example's invalid `storage_type`/`disk_format` values were
+  corrected, and an import example was added.
 - **`vpsie_monitoring_rule`:** reworked to the API's actual shape. The resource
   sent a stale flat body (single metric, single action) the backend no longer
   accepts; it now takes one or more `rule` blocks, each with its own `action`
