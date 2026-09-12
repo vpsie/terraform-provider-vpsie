@@ -14,7 +14,8 @@ description: |-
 
 ```terraform
 resource "vpsie_project" "example" {
-  name = "my-project"
+  name        = "my-project"
+  description = "Managed by Terraform"
 }
 ```
 
@@ -23,25 +24,14 @@ resource "vpsie_project" "example" {
 
 ### Required
 
+- `description` (String) The project description. Required by the API; must not be empty.
 - `name` (String)
-
-### Optional
-
-- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
-- `created_by` (String)
+- `created_by` (Number)
 - `created_on` (String)
-- `description` (String)
 - `id` (Number) The ID of this resource.
 - `identifier` (String)
 - `is_default` (Number)
 - `updated_at` (String)
-
-<a id="nestedatt--timeouts"></a>
-### Nested Schema for `timeouts`
-
-Optional:
-
-- `create` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).

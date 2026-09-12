@@ -143,7 +143,7 @@ func (s *sshkeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	plan.CreatedOn = types.StringValue(sshkey.CreatedOn)
 	plan.CreatedBy = types.StringValue(sshkey.CreatedBy)
 	plan.UserId = types.Int64Value(sshkey.UserId)
-	plan.Identifier = types.StringValue(sshkey.Name)
+	plan.Identifier = types.StringValue(sshkey.Identifier)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)

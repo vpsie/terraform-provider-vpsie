@@ -3,8 +3,8 @@ package project
 import (
 	"context"
 	"fmt"
+	"strconv"
 
-	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -77,7 +77,8 @@ func (i *projectResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"description": schema.StringAttribute{
-				Computed: true,
+				MarkdownDescription: "The project description. Required by the API; must not be empty.",
+				Required:            true,
 			},
 			"created_on": schema.StringAttribute{
 				Computed: true,
@@ -85,15 +86,12 @@ func (i *projectResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"created_by": schema.StringAttribute{
+			"created_by": schema.Int64Attribute{
 				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
 				},
 			},
-			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
-				Create: true,
-			}),
 		},
 	}
 }
@@ -217,7 +215,9 @@ func (p *projectResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	err := p.client.Project.Delete(ctx, state.Identifier.ValueString())
+	// The delete endpoint (DELETE /projects/:id) keys on the numeric id, not the
+	// uuid identifier used by the read endpoint.
+	err := p.client.Project.Delete(ctx, strconv.FormatInt(state.ID.ValueInt64(), 10))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting project",
