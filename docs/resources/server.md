@@ -18,8 +18,10 @@ resource "vpsie_server" "example" {
   dc_identifier       = "dc-identifier"
   os_identifier       = "os-identifier"
   resource_identifier = "resource-identifier"
-  project_id          = 1
+  project_identifier  = "project-uuid-identifier"
   password            = "secure-password"
+  add_public_ip_v4    = 1
+  backup_enabled      = 0
   delete_reason       = "no longer needed"
 }
 ```
@@ -32,7 +34,7 @@ resource "vpsie_server" "example" {
 - `dc_identifier` (String)
 - `hostname` (String)
 - `os_identifier` (String)
-- `project_id` (Number)
+- `project_identifier` (String) UUID identifier of the project to create the server in.
 - `resource_identifier` (String)
 
 ### Optional
@@ -77,7 +79,7 @@ resource "vpsie_server" "example" {
 - `id` (Number) The ID of this resource.
 - `identifier` (String)
 - `in_pcs` (Number)
-- `initial_password` (String)
+- `initial_password` (String, Sensitive)
 - `is_active` (Number)
 - `is_autobackup` (Number)
 - `is_bucket_available` (Number)
@@ -104,6 +106,7 @@ resource "vpsie_server" "example" {
 - `payable_license` (Number)
 - `power` (Number)
 - `private_ip` (String)
+- `project_id` (Number)
 - `ram` (Number)
 - `ssd` (Number)
 - `state` (String)
@@ -120,3 +123,14 @@ resource "vpsie_server" "example" {
 Optional:
 
 - `create` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Servers are imported by their UUID identifier.
+terraform import vpsie_server.example "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+```

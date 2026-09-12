@@ -16,6 +16,15 @@ FEATURES:
 
 BUG FIXES:
 
+- **`vpsie_server`:** server creation could never succeed. The project was sent
+  as a numeric `project_id`, but the API requires the project's UUID identifier
+  as a string (it rejects a number outright); a new required `project_identifier`
+  argument carries it, and `project_id` is now a computed numeric attribute. The
+  configured `password` was also silently dropped from the create request — it is
+  now sent (and the API is asked to generate one only when it is omitted), and
+  `initial_password` is marked sensitive. (Full provisioning could not be
+  re-verified end-to-end on the test backend, whose hypervisor nodes were
+  unreachable; the create request is accepted by the API with these fixes.)
 - **`vpsie_storage`:** fixed two defects. Updating the volume (rename or resize)
   crashed with a value-conversion error because the Int64 `size` attribute was
   read as a string; and reads overwrote config-owned fields with the API's

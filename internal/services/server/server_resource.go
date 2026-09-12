@@ -56,6 +56,7 @@ type serverResourceModel struct {
 	IsDeleted           types.Int64  `tfsdk:"is_deleted"`
 	Power               types.Int64  `tfsdk:"power"`
 	ProjectID           types.Int64  `tfsdk:"project_id"`
+	ProjectIdentifier   types.String `tfsdk:"project_identifier"`
 	IsCustom            types.Int64  `tfsdk:"is_custom"`
 	NrAddedIps          types.Int64  `tfsdk:"nr_added_ips"`
 	InPcs               types.Int64  `tfsdk:"in_pcs"`
@@ -165,8 +166,15 @@ func (s *serverResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
+			"project_identifier": schema.StringAttribute{
+				Required:            true,
+				MarkdownDescription: "UUID identifier of the project to create the server in.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
 			"project_id": schema.Int64Attribute{
-				Required: true,
+				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
@@ -312,7 +320,8 @@ func (s *serverResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				Optional: true,
 			},
 			"initial_password": schema.StringAttribute{
-				Computed: true,
+				Computed:  true,
+				Sensitive: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -652,7 +661,16 @@ func (s *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	createServerReq.OsIdentifier = plan.OsIdentifier.ValueString()
 	createServerReq.DcIdentifier = plan.DcIdentifier.ValueString()
 	createServerReq.Hostname = plan.Hostname.ValueString()
-	createServerReq.ProjectID = plan.ProjectID.ValueInt64()
+	createServerReq.ProjectIdentifier = plan.ProjectIdentifier.ValueString()
+
+	// Apply the configured password, or ask the API to generate one when none is
+	// given (otherwise the user's password input would be silently ignored).
+	if !plan.Password.IsNull() && plan.Password.ValueString() != "" {
+		createServerReq.VmPassword = plan.Password.ValueString()
+		createServerReq.IsGeneratedPassword = false
+	} else {
+		createServerReq.IsGeneratedPassword = true
+	}
 
 	if !plan.SshKeyID.IsNull() {
 		createServerReq.SshKeyIdentifier = plan.SshKeyID.ValueStringPointer()
