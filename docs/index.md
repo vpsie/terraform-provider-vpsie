@@ -47,3 +47,4 @@ resource "vpsie_server_group" "web" {
 ### Optional
 
 - `access_token` (String, Sensitive) The VPSie API access token used to authenticate requests. May also be provided via the `VPSIE_ACCESS_TOKEN` environment variable.
+- `endpoint` (String) Override the VPSie API base URL. Defaults to `https://api.vpsie.com/apps/v2`. May also be set via the `VPSIE_ENDPOINT` environment variable. Useful for testing against non-production environments.

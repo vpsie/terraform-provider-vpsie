@@ -3,19 +3,20 @@
 page_title: "vpsie_tag Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  Manages a VPSie resource tag (a reusable label with a name and color).
+  Applies a set of tags to a VPSie resource (entity). Tags are labels attached to an existing resource such as a server, VPC, storage volume or ssh key.
 ---
 
 # vpsie_tag (Resource)
 
-Manages a VPSie resource tag (a reusable label with a name and color).
+Applies a set of tags to a VPSie resource (entity). Tags are labels attached to an existing resource such as a server, VPC, storage volume or ssh key.
 
 ## Example Usage
 
 ```terraform
 resource "vpsie_tag" "example" {
-  name  = "production"
-  color = "#ff0000"
+  entity              = "ssh_keys"
+  resource_identifier = "ssh-key-identifier"
+  tags                = ["production", "web"]
 }
 ```
 
@@ -24,9 +25,6 @@ resource "vpsie_tag" "example" {
 
 ### Required
 
-- `color` (String) The color of the tag (for example a hex value like `#ff0000`).
-- `name` (String) The name of the tag.
-
-### Read-Only
-
-- `identifier` (String) The unique identifier of the tag.
+- `entity` (String) The type of resource the tags are applied to (for example `boxes`, `vpc`, `storages`, `ssh_keys`, `dns_domains`, `lbs`, `k8s`, `container_registry`, `managed_db_clusters`).
+- `resource_identifier` (String) The identifier of the resource the tags are applied to.
+- `tags` (List of String) The list of tag names applied to the resource.

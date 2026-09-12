@@ -16,6 +16,9 @@ FEATURES:
 
 ENHANCEMENTS:
 
+- Added an `endpoint` provider argument (and `VPSIE_ENDPOINT`) to target
+  non-production API environments.
+
 - Updated the HashiCorp Terraform Plugin Framework and companion modules to their
   current releases (`terraform-plugin-framework` v1.19.0, `terraform-plugin-go`
   v0.31.0, `terraform-plugin-testing` v1.16.0, `terraform-plugin-docs` v0.25.0,

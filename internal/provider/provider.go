@@ -61,6 +61,7 @@ type VpsieProvider struct {
 // VpsieProviderModel describes the provider data model.
 type VpsieProviderModel struct {
 	AccessToken types.String `tfsdk:"access_token"`
+	Endpoint    types.String `tfsdk:"endpoint"`
 }
 
 func (p *VpsieProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -80,6 +81,12 @@ func (p *VpsieProvider) Schema(ctx context.Context, req provider.SchemaRequest, 
 					"May also be provided via the `VPSIE_ACCESS_TOKEN` environment variable.",
 				Optional:  true,
 				Sensitive: true,
+			},
+			"endpoint": schema.StringAttribute{
+				MarkdownDescription: "Override the VPSie API base URL. Defaults to " +
+					"`https://api.vpsie.com/apps/v2`. May also be set via the `VPSIE_ENDPOINT` " +
+					"environment variable. Useful for testing against non-production environments.",
+				Optional: true,
 			},
 		},
 	}
@@ -135,6 +142,23 @@ func (p *VpsieProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	client.SetRequestHeaders(map[string]string{
 		"Vpsie-Auth": accessToken,
 	})
+
+	endpoint := os.Getenv("VPSIE_ENDPOINT")
+	if !data.Endpoint.IsNull() {
+		endpoint = data.Endpoint.ValueString()
+	}
+
+	if endpoint != "" {
+		if err := client.SetBaseURL(endpoint); err != nil {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("endpoint"),
+				"Invalid Vpsie Endpoint",
+				"The provider could not parse the configured endpoint URL: "+err.Error(),
+			)
+
+			return
+		}
+	}
 
 	// Make the HashiCups client available during DataSource and Resource
 	// type Configure methods.

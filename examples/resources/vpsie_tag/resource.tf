@@ -1,4 +1,5 @@
 resource "vpsie_tag" "example" {
-  name  = "production"
-  color = "#ff0000"
+  entity              = "ssh_keys"
+  resource_identifier = "ssh-key-identifier"
+  tags                = ["production", "web"]
 }

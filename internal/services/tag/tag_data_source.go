@@ -25,9 +25,9 @@ type tagDataSourceModel struct {
 }
 
 type tagModel struct {
-	Identifier types.String `tfsdk:"identifier"`
 	Name       types.String `tfsdk:"name"`
-	Color      types.String `tfsdk:"color"`
+	EntityType types.String `tfsdk:"entity_type"`
+	EntityID   types.Int64  `tfsdk:"entity_id"`
 }
 
 // NewTagDataSource is a helper function to create the data source.
@@ -41,7 +41,7 @@ func (t *tagDataSource) Metadata(_ context.Context, req datasource.MetadataReque
 
 func (t *tagDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists all VPSie resource tags.",
+		MarkdownDescription: "Lists all tags applied across the account's resources.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed: true,
@@ -50,13 +50,13 @@ func (t *tagDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"identifier": schema.StringAttribute{
-							Computed: true,
-						},
 						"name": schema.StringAttribute{
 							Computed: true,
 						},
-						"color": schema.StringAttribute{
+						"entity_type": schema.StringAttribute{
+							Computed: true,
+						},
+						"entity_id": schema.Int64Attribute{
 							Computed: true,
 						},
 					},
@@ -81,9 +81,9 @@ func (t *tagDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp
 
 	for _, tag := range tags {
 		state.Tags = append(state.Tags, tagModel{
-			Identifier: types.StringValue(tag.Identifier),
 			Name:       types.StringValue(tag.Name),
-			Color:      types.StringValue(tag.Color),
+			EntityType: types.StringValue(tag.EntityType),
+			EntityID:   types.Int64Value(tag.EntityID),
 		})
 	}
 

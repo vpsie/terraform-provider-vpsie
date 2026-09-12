@@ -3,12 +3,12 @@
 page_title: "vpsie_tags Data Source - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  Lists all VPSie resource tags.
+  Lists all tags applied across the account's resources.
 ---
 
 # vpsie_tags (Data Source)
 
-Lists all VPSie resource tags.
+Lists all tags applied across the account's resources.
 
 ## Example Usage
 
@@ -29,6 +29,6 @@ data "vpsie_tags" "example" {}
 
 Read-Only:
 
-- `color` (String)
-- `identifier` (String)
+- `entity_id` (Number)
+- `entity_type` (String)
 - `name` (String)

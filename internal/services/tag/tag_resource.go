@@ -3,6 +3,7 @@ package tag
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -24,9 +25,9 @@ type tagResource struct {
 }
 
 type tagResourceModel struct {
-	Identifier types.String `tfsdk:"identifier"`
-	Name       types.String `tfsdk:"name"`
-	Color      types.String `tfsdk:"color"`
+	Entity             types.String `tfsdk:"entity"`
+	ResourceIdentifier types.String `tfsdk:"resource_identifier"`
+	Tags               types.List   `tfsdk:"tags"`
 }
 
 // NewTagResource is a helper function to create the resource.
@@ -40,28 +41,29 @@ func (t *tagResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 
 func (t *tagResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a VPSie resource tag (a reusable label with a name and color).",
+		MarkdownDescription: "Applies a set of tags to a VPSie resource (entity). Tags are labels " +
+			"attached to an existing resource such as a server, VPC, storage volume or ssh key.",
 		Attributes: map[string]schema.Attribute{
-			"identifier": schema.StringAttribute{
-				MarkdownDescription: "The unique identifier of the tag.",
-				Computed:            true,
+			"entity": schema.StringAttribute{
+				MarkdownDescription: "The type of resource the tags are applied to (for example " +
+					"`boxes`, `vpc`, `storages`, `ssh_keys`, `dns_domains`, `lbs`, `k8s`, " +
+					"`container_registry`, `managed_db_clusters`).",
+				Required: true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the tag.",
+			"resource_identifier": schema.StringAttribute{
+				MarkdownDescription: "The identifier of the resource the tags are applied to.",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"color": schema.StringAttribute{
-				MarkdownDescription: "The color of the tag (for example a hex value like `#ff0000`).",
+			"tags": schema.ListAttribute{
+				MarkdownDescription: "The list of tag names applied to the resource.",
 				Required:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+				ElementType:         types.StringType,
 			},
 		},
 	}
@@ -85,140 +87,122 @@ func (t *tagResource) Configure(_ context.Context, req resource.ConfigureRequest
 	t.client = client
 }
 
-// Create creates the resource and sets the initial Terraform state.
 func (t *tagResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan tagResourceModel
-	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	identifier, err := t.client.Tags.Create(ctx, plan.Name.ValueString(), plan.Color.ValueString())
+	var tags []string
+	resp.Diagnostics.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Use Edit (replace) so the resource is authoritative over the entity's tag
+	// set: after apply the entity has exactly the configured tags, matching Read.
+	err := t.client.Tags.Edit(ctx, plan.Entity.ValueString(), plan.ResourceIdentifier.ValueString(), tags)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error creating tag",
-			"couldn't create tag, unexpected error: "+err.Error(),
+			"Error applying tags",
+			"couldn't apply tags to "+plan.Entity.ValueString()+" "+plan.ResourceIdentifier.ValueString()+": "+err.Error(),
 		)
 
 		return
 	}
 
-	// Some API versions do not return the identifier on create; fall back to a
-	// lookup by name so the resource always ends up with a stable identifier.
-	if identifier == "" {
-		tag, lookupErr := t.getTagByName(ctx, plan.Name.ValueString())
-		if lookupErr != nil {
-			resp.Diagnostics.AddError(
-				"Error creating tag",
-				"tag created but couldn't resolve its identifier: "+lookupErr.Error(),
-			)
-
-			return
-		}
-		identifier = tag.Identifier
-	}
-
-	plan.Identifier = types.StringValue(identifier)
-
-	diags = resp.State.Set(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-// Read refreshes the Terraform state with the latest data.
 func (t *tagResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state tagResourceModel
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	tag, err := t.getTagByIdentifier(ctx, state.Identifier.ValueString())
+	names, err := t.client.Tags.ListForEntity(ctx, state.Entity.ValueString(), state.ResourceIdentifier.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error reading tag",
-			"couldn't read tag "+state.Identifier.ValueString()+": "+err.Error(),
+			"Error reading tags",
+			"couldn't read tags for "+state.Entity.ValueString()+" "+state.ResourceIdentifier.ValueString()+": "+err.Error(),
 		)
 
 		return
 	}
 
-	if tag == nil {
+	if len(names) == 0 {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 
-	state.Name = types.StringValue(tag.Name)
-	state.Color = types.StringValue(tag.Color)
-
-	diags = resp.State.Set(ctx, &state)
+	list, diags := types.ListValueFrom(ctx, types.StringType, names)
 	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.Tags = list
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update is a no-op: name and color changes force replacement.
 func (t *tagResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan tagResourceModel
-	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	diags = resp.State.Set(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	var tags []string
+	resp.Diagnostics.Append(plan.Tags.ElementsAs(ctx, &tags, false)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	err := t.client.Tags.Edit(ctx, plan.Entity.ValueString(), plan.ResourceIdentifier.ValueString(), tags)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error updating tags",
+			"couldn't update tags for "+plan.Entity.ValueString()+" "+plan.ResourceIdentifier.ValueString()+": "+err.Error(),
+		)
+
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-// Delete removes the tag from Terraform state. The VPSie API exposes no
-// endpoint to delete a tag definition (only endpoints to detach a tag from a
-// specific resource), so the tag definition itself remains in the account. A
-// warning is emitted to make this explicit.
 func (t *tagResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state tagResourceModel
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	resp.Diagnostics.AddWarning(
-		"Tag definition not deleted",
-		"The VPSie API does not support deleting a tag definition. The tag "+
-			state.Identifier.ValueString()+" has been removed from Terraform state but still "+
-			"exists in your VPSie account and can be removed from the console.",
-	)
+	err := t.client.Tags.Delete(ctx, state.Entity.ValueString(), state.ResourceIdentifier.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error removing tags",
+			"couldn't remove tags from "+state.Entity.ValueString()+" "+state.ResourceIdentifier.ValueString()+": "+err.Error(),
+		)
+
+		return
+	}
 }
 
+// ImportState imports a tag attachment using the composite ID "entity,resource_identifier".
 func (t *tagResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("identifier"), req, resp)
-}
+	parts := strings.Split(req.ID, ",")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		resp.Diagnostics.AddError(
+			"Invalid import ID",
+			`Expected import ID in the format "entity,resource_identifier".`,
+		)
 
-func (t *tagResource) getTagByName(ctx context.Context, name string) (*govpsie.Tag, error) {
-	tags, err := t.client.Tags.List(ctx)
-	if err != nil {
-		return nil, err
+		return
 	}
 
-	for i := range tags {
-		if tags[i].Name == name {
-			return &tags[i], nil
-		}
-	}
-
-	return nil, fmt.Errorf("tag %q not found", name)
-}
-
-func (t *tagResource) getTagByIdentifier(ctx context.Context, identifier string) (*govpsie.Tag, error) {
-	tags, err := t.client.Tags.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range tags {
-		if tags[i].Identifier == identifier {
-			return &tags[i], nil
-		}
-	}
-
-	return nil, nil
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("entity"), parts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("resource_identifier"), parts[1])...)
 }

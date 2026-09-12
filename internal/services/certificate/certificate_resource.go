@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -259,29 +260,68 @@ func applyCertificate(model *certificateResourceModel, cert *govpsie.Certificate
 	model.CreatedOn = types.StringValue(cert.CreatedOn)
 }
 
-// getCertificateByName resolves a certificate created for the given name. The
-// API may store the name verbatim or append a suffix (for example
-// "my-cert-4cb5"), so an exact match is preferred and a prefix match is used as
-// a fallback.
+// getCertificateByName resolves a just-created certificate by name. Issuance can
+// be asynchronous, so it polls with a bounded, context-aware backoff. The API
+// may store the name verbatim or append a hex suffix (for example
+// "my-cert-4cb5"), so an exact match is preferred and a "<name>-<hex>" match is
+// used as a fallback (a plain prefix match would wrongly match "my-cert-prod").
 func (c *certificateResource) getCertificateByName(ctx context.Context, name string) (*govpsie.Certificate, error) {
-	certs, err := c.client.Certificate.List(ctx)
-	if err != nil {
-		return nil, err
+	const attempts = 6
+	var lastErr error
+
+	for attempt := 0; attempt < attempts; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(5 * time.Second):
+			}
+		}
+
+		certs, err := c.client.Certificate.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range certs {
+			if certs[i].CertificateName == name {
+				return &certs[i], nil
+			}
+		}
+
+		for i := range certs {
+			if hasHexSuffix(certs[i].CertificateName, name) {
+				return &certs[i], nil
+			}
+		}
+
+		lastErr = fmt.Errorf("certificate %q not found", name)
 	}
 
-	for i := range certs {
-		if certs[i].CertificateName == name {
-			return &certs[i], nil
+	return nil, lastErr
+}
+
+// hasHexSuffix reports whether candidate is name followed by "-" and a non-empty
+// run of hex digits (the shape the API uses when it disambiguates a name).
+func hasHexSuffix(candidate, name string) bool {
+	prefix := name + "-"
+	if !strings.HasPrefix(candidate, prefix) {
+		return false
+	}
+
+	suffix := candidate[len(prefix):]
+	if suffix == "" {
+		return false
+	}
+
+	for _, r := range suffix {
+		isHex := (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+		if !isHex {
+			return false
 		}
 	}
 
-	for i := range certs {
-		if strings.HasPrefix(certs[i].CertificateName, name+"-") {
-			return &certs[i], nil
-		}
-	}
-
-	return nil, fmt.Errorf("certificate %q not found", name)
+	return true
 }
 
 func (c *certificateResource) getCertificateByIdentifier(ctx context.Context, identifier string) (*govpsie.Certificate, error) {

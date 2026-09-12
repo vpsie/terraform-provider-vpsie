@@ -14,15 +14,9 @@ func TestAccTagResource(t *testing.T) {
 			{
 				Config: testAccTagConfig,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("vpsie_tag.test", "name", "terraform-acc"),
-					resource.TestCheckResourceAttr("vpsie_tag.test", "color", "#00ff00"),
-					resource.TestCheckResourceAttrSet("vpsie_tag.test", "identifier"),
+					resource.TestCheckResourceAttr("vpsie_tag.test", "entity", "ssh_keys"),
+					resource.TestCheckResourceAttr("vpsie_tag.test", "tags.#", "2"),
 				),
-			},
-			{
-				ResourceName:      "vpsie_tag.test",
-				ImportState:       true,
-				ImportStateVerify: true,
 			},
 		},
 	})
@@ -30,7 +24,8 @@ func TestAccTagResource(t *testing.T) {
 
 const testAccTagConfig = `
 resource "vpsie_tag" "test" {
-  name  = "terraform-acc"
-  color = "#00ff00"
+  entity              = "ssh_keys"
+  resource_identifier = "replace-with-ssh-key-identifier"
+  tags                = ["terraform-acc", "test"]
 }
 `
