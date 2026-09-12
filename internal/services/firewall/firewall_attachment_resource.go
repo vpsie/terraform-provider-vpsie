@@ -37,6 +37,10 @@ func (f *firewallAttachmentResource) Metadata(_ context.Context, req resource.Me
 
 func (f *firewallAttachmentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "Attaches a firewall group to a server.\n\n" +
+			"Attaching two different firewall groups to the *same* server concurrently races inside " +
+			"the API and fails with `ipSetNotCreated`. When a server needs more than one group, " +
+			"serialise the attachments with `depends_on`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed: true,

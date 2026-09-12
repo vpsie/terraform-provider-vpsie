@@ -31,11 +31,11 @@ resource "vpsie_server" "example" {
 
 ### Required
 
-- `dc_identifier` (String)
+- `dc_identifier` (String) Identifier of the datacenter to provision into. Must be the same datacenter the `resource_identifier` offer is mapped to.
 - `hostname` (String)
-- `os_identifier` (String)
+- `os_identifier` (String) Identifier of the OS template to install.
 - `project_identifier` (String) UUID identifier of the project to create the server in.
-- `resource_identifier` (String)
+- `resource_identifier` (String) Identifier of the server offer to provision. This is the offer's **datacenter-mapping** identifier, as returned by the offers API for the chosen datacenter -- not the underlying box-size identifier. Supplying a box-size identifier is rejected with `Please select the right package for this OS`.
 
 ### Optional
 

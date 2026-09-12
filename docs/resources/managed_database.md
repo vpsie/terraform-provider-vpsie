@@ -35,7 +35,7 @@ resource "vpsie_managed_database" "example" {
 - `datacenter_identifier` (String) The identifier of the datacenter that hosts the cluster.
 - `node_count` (Number) The number of nodes in the cluster. Changing this scales the cluster up or down one node at a time.
 - `project_identifier` (String) The UUID identifier of the project the cluster belongs to.
-- `resource_identifier` (String) The offer (plan) identifier that determines node size; see the managed database offers for the datacenter.
+- `resource_identifier` (String) Identifier of the database offer. This is the offer's **datacenter-mapping** identifier, as returned by the offers API for the chosen datacenter -- not the underlying size identifier. Supplying a size identifier is rejected with `Please select the right package for this OS`.
 - `vpc_id` (Number) The numeric id of the VPC the cluster is attached to.
 
 ### Read-Only

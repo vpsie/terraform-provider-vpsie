@@ -181,18 +181,25 @@ func (s *serverResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			},
 			"resource_identifier": schema.StringAttribute{
 				Required: true,
+				MarkdownDescription: "Identifier of the server offer to provision. This is the offer's " +
+					"**datacenter-mapping** identifier, as returned by the offers API for the chosen datacenter -- " +
+					"not the underlying box-size identifier. Supplying a box-size identifier is rejected with " +
+					"`Please select the right package for this OS`.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"os_identifier": schema.StringAttribute{
-				Required: true,
+				Required:            true,
+				MarkdownDescription: "Identifier of the OS template to install.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"dc_identifier": schema.StringAttribute{
 				Required: true,
+				MarkdownDescription: "Identifier of the datacenter to provision into. Must be the same datacenter " +
+					"the `resource_identifier` offer is mapped to.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},

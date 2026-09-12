@@ -33,3 +33,4 @@ resource "vpsie_vpc_server_assignment" "example" {
 
 - `id` (String) The ID of this resource.
 - `private_ip_id` (Number)
+- `vpc_ip` (String) Private IPv4 address assigned to the server inside the VPC. Use this to point other resources, such as a load balancer backend, at the server.

@@ -3,12 +3,15 @@
 page_title: "vpsie_firewall_attachment Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  
+  Attaches a firewall group to a server.
+  Attaching two different firewall groups to the same server concurrently races inside the API and fails with ipSetNotCreated. When a server needs more than one group, serialise the attachments with depends_on.
 ---
 
 # vpsie_firewall_attachment (Resource)
 
+Attaches a firewall group to a server.
 
+Attaching two different firewall groups to the *same* server concurrently races inside the API and fails with `ipSetNotCreated`. When a server needs more than one group, serialise the attachments with `depends_on`.
 
 ## Example Usage
 

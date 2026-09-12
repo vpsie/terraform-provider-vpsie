@@ -81,8 +81,11 @@ func (m *managedDBResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"resource_identifier": schema.StringAttribute{
-				MarkdownDescription: "The offer (plan) identifier that determines node size; see the managed database offers for the datacenter.",
-				Required:            true,
+				MarkdownDescription: "Identifier of the database offer. This is the offer's " +
+					"**datacenter-mapping** identifier, as returned by the offers API for the chosen " +
+					"datacenter -- not the underlying size identifier. Supplying a size identifier is " +
+					"rejected with `Please select the right package for this OS`.",
+				Required: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
