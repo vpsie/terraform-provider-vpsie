@@ -27,13 +27,13 @@ type managedDBResource struct {
 
 type managedDBResourceModel struct {
 	Identifier           types.String `tfsdk:"identifier"`
-	Name                 types.String `tfsdk:"name"`
-	DBType               types.String `tfsdk:"db_type"`
-	DatacenterIdentifier types.String `tfsdk:"datacenter_identifier"`
-	PlanID               types.Int64  `tfsdk:"plan_id"`
-	ProjectID            types.String `tfsdk:"project_id"`
-	NodeCount            types.Int64  `tfsdk:"node_count"`
 	ClusterName          types.String `tfsdk:"cluster_name"`
+	DatacenterIdentifier types.String `tfsdk:"datacenter_identifier"`
+	ResourceIdentifier   types.String `tfsdk:"resource_identifier"`
+	VpcID                types.Int64  `tfsdk:"vpc_id"`
+	ProjectIdentifier    types.String `tfsdk:"project_identifier"`
+	NodeCount            types.Int64  `tfsdk:"node_count"`
+	PrivateFqdn          types.String `tfsdk:"private_fqdn"`
 	CPU                  types.Int64  `tfsdk:"cpu"`
 	RAM                  types.Int64  `tfsdk:"ram"`
 	Traffic              types.Int64  `tfsdk:"traffic"`
@@ -52,7 +52,12 @@ func (m *managedDBResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (m *managedDBResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a VPSie managed database cluster.",
+		MarkdownDescription: "Manages a VPSie managed database cluster. The size/engine is selected via " +
+			"`resource_identifier` (an offer from the datacenter's managed database offers), and the cluster " +
+			"is attached to a VPC by its numeric `vpc_id`. On import, the offer, VPC, project, and datacenter " +
+			"are not returned by the API and must be set in configuration to match the cluster.\n\n" +
+			"Create clusters serially: the backend can race when several clusters are provisioned at once, " +
+			"so use `depends_on` (or `-parallelism=1`) when declaring more than one.",
 		Attributes: map[string]schema.Attribute{
 			"identifier": schema.StringAttribute{
 				MarkdownDescription: "The unique identifier of the managed database cluster.",
@@ -61,15 +66,8 @@ func (m *managedDBResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"name": schema.StringAttribute{
+			"cluster_name": schema.StringAttribute{
 				MarkdownDescription: "The name of the managed database cluster.",
-				Required:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"db_type": schema.StringAttribute{
-				MarkdownDescription: "The database engine type (for example `mysql`, `postgresql`).",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -82,16 +80,23 @@ func (m *managedDBResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"plan_id": schema.Int64Attribute{
-				MarkdownDescription: "The plan identifier that determines node size.",
+			"resource_identifier": schema.StringAttribute{
+				MarkdownDescription: "The offer (plan) identifier that determines node size; see the managed database offers for the datacenter.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"vpc_id": schema.Int64Attribute{
+				MarkdownDescription: "The numeric id of the VPC the cluster is attached to.",
 				Required:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.RequiresReplace(),
 				},
 			},
-			"project_id": schema.StringAttribute{
-				MarkdownDescription: "The identifier of the project the cluster belongs to.",
-				Optional:            true,
+			"project_identifier": schema.StringAttribute{
+				MarkdownDescription: "The UUID identifier of the project the cluster belongs to.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -100,8 +105,8 @@ func (m *managedDBResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				MarkdownDescription: "The number of nodes in the cluster. Changing this scales the cluster up or down one node at a time.",
 				Required:            true,
 			},
-			"cluster_name": schema.StringAttribute{
-				MarkdownDescription: "The cluster name as reported by the API.",
+			"private_fqdn": schema.StringAttribute{
+				MarkdownDescription: "The private FQDN assigned to the cluster.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -163,12 +168,12 @@ func (m *managedDBResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	createReq := &govpsie.CreateManagedDBRequest{
-		Name:         plan.Name.ValueString(),
-		DBType:       plan.DBType.ValueString(),
-		DcIdentifier: plan.DatacenterIdentifier.ValueString(),
-		NodeCount:    plan.NodeCount.ValueInt64(),
-		PlanID:       plan.PlanID.ValueInt64(),
-		ProjectID:    plan.ProjectID.ValueString(),
+		ClusterName:        plan.ClusterName.ValueString(),
+		DcIdentifier:       plan.DatacenterIdentifier.ValueString(),
+		ResourceIdentifier: plan.ResourceIdentifier.ValueString(),
+		NodesCount:         plan.NodeCount.ValueInt64(),
+		VpcID:              plan.VpcID.ValueInt64(),
+		ProjectIdentifier:  plan.ProjectIdentifier.ValueString(),
 	}
 
 	if err := m.client.ManagedDB.Create(ctx, createReq); err != nil {
@@ -180,7 +185,7 @@ func (m *managedDBResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	summary, err := m.getClusterByName(ctx, plan.Name.ValueString())
+	summary, err := m.getClusterByName(ctx, plan.ClusterName.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating managed database",
@@ -363,6 +368,7 @@ func applyManagedDBDetails(model *managedDBResourceModel, details *govpsie.Manag
 	model.Traffic = types.Int64Value(details.Traffic)
 	model.AdminPassword = types.StringValue(details.AdminPassword)
 	model.CreatedOn = types.StringValue(details.CreatedOn)
+	model.PrivateFqdn = types.StringValue(details.PrivateFqdn)
 }
 
 // getClusterByName resolves a just-created cluster by name. Cluster creation is
@@ -388,7 +394,7 @@ func (m *managedDBResource) getClusterByName(ctx context.Context, name string) (
 		}
 
 		for i := range clusters {
-			if clusters[i].ClusterName == name || clusters[i].Nickname == name {
+			if clusters[i].ClusterName == name {
 				return &clusters[i], nil
 			}
 		}

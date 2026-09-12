@@ -16,6 +16,14 @@ FEATURES:
 
 BUG FIXES:
 
+- **`vpsie_managed_database`:** cluster creation never worked — it sent `name`,
+  `db_type`, and a numeric `plan_id`, but the API wants `clusterName`, an offer
+  `resourceIdentifier`, `nodesCount`, a numeric `vpcId`, and `projectIdentifier`
+  (there is no `db_type`/`plan_id`; the engine and size are encoded in the offer).
+  The schema now takes `cluster_name`, `resource_identifier`, `vpc_id`, and
+  `project_identifier`, and the request matches the API. Create, read, no-drift
+  plan, and delete are verified against the live API. (On import the offer, VPC,
+  project, and datacenter are not returned by the API and must be set in config.)
 - **`vpsie_registry`:** registry creation never worked — the request sent the
   wrong field names and omitted the project. The API expects `datacenterId`,
   `resourceIdentifier` (the plan), and a `projectId` (the project's UUID); a new

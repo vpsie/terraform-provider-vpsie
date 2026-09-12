@@ -14,7 +14,7 @@ func TestAccManagedDatabaseResource(t *testing.T) {
 			{
 				Config: testAccManagedDatabaseConfig,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("vpsie_managed_database.test", "name", "terraform-acc-db"),
+					resource.TestCheckResourceAttr("vpsie_managed_database.test", "cluster_name", "terraform-acc-db"),
 					resource.TestCheckResourceAttr("vpsie_managed_database.test", "node_count", "1"),
 					resource.TestCheckResourceAttrSet("vpsie_managed_database.test", "identifier"),
 				),
@@ -25,10 +25,11 @@ func TestAccManagedDatabaseResource(t *testing.T) {
 
 const testAccManagedDatabaseConfig = `
 resource "vpsie_managed_database" "test" {
-  name                  = "terraform-acc-db"
-  db_type               = "mysql"
+  cluster_name          = "terraform-acc-db"
   datacenter_identifier = "replace-with-datacenter-identifier"
-  plan_id               = 1
+  resource_identifier   = "replace-with-offer-identifier"
+  vpc_id                = 1
+  project_identifier    = "replace-with-project-identifier"
   node_count            = 1
 }
 `

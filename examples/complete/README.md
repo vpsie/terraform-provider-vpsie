@@ -1,7 +1,7 @@
 # Complete example
 
 Provisions a small, tagged environment on VPSie: a server group, a managed
-MySQL database, a container registry and (optionally) a TLS certificate.
+database, a container registry (tagged), and (optionally) a TLS certificate.
 
 ## Usage
 
@@ -11,6 +11,9 @@ export VPSIE_ACCESS_TOKEN="your-api-token"
 terraform init
 terraform apply \
   -var 'datacenter_identifier=REPLACE_ME' \
+  -var 'project_identifier=REPLACE_ME' \
+  -var 'database_resource_identifier=REPLACE_ME' \
+  -var 'database_vpc_id=REPLACE_ME' \
   -var 'registry_plan_identifier=REPLACE_ME'
 ```
 

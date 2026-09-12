@@ -16,10 +16,19 @@ variable "datacenter_identifier" {
   type        = string
 }
 
-variable "database_plan_id" {
-  description = "Managed database plan id."
+variable "project_identifier" {
+  description = "Project UUID identifier to create resources in."
+  type        = string
+}
+
+variable "database_resource_identifier" {
+  description = "Managed database offer (plan) identifier; see the datacenter's managed database offers."
+  type        = string
+}
+
+variable "database_vpc_id" {
+  description = "Numeric id of the VPC the managed database attaches to."
   type        = number
-  default     = 1
 }
 
 variable "database_node_count" {

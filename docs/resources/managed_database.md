@@ -3,21 +3,25 @@
 page_title: "vpsie_managed_database Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  Manages a VPSie managed database cluster.
+  Manages a VPSie managed database cluster. The size/engine is selected via resource_identifier (an offer from the datacenter's managed database offers), and the cluster is attached to a VPC by its numeric vpc_id. On import, the offer, VPC, project, and datacenter are not returned by the API and must be set in configuration to match the cluster.
+  Create clusters serially: the backend can race when several clusters are provisioned at once, so use depends_on (or -parallelism=1) when declaring more than one.
 ---
 
 # vpsie_managed_database (Resource)
 
-Manages a VPSie managed database cluster.
+Manages a VPSie managed database cluster. The size/engine is selected via `resource_identifier` (an offer from the datacenter's managed database offers), and the cluster is attached to a VPC by its numeric `vpc_id`. On import, the offer, VPC, project, and datacenter are not returned by the API and must be set in configuration to match the cluster.
+
+Create clusters serially: the backend can race when several clusters are provisioned at once, so use `depends_on` (or `-parallelism=1`) when declaring more than one.
 
 ## Example Usage
 
 ```terraform
 resource "vpsie_managed_database" "example" {
-  name                  = "app-db"
-  db_type               = "mysql"
-  datacenter_identifier = "datacenter-identifier"
-  plan_id               = 1
+  cluster_name          = "my-db-cluster"
+  datacenter_identifier = "datacenter-uuid-identifier"
+  resource_identifier   = "offer-uuid-identifier" # from the managed database offers
+  vpc_id                = 1234                    # numeric VPC id
+  project_identifier    = "project-uuid-identifier"
   node_count            = 1
 }
 ```
@@ -27,22 +31,32 @@ resource "vpsie_managed_database" "example" {
 
 ### Required
 
+- `cluster_name` (String) The name of the managed database cluster.
 - `datacenter_identifier` (String) The identifier of the datacenter that hosts the cluster.
-- `db_type` (String) The database engine type (for example `mysql`, `postgresql`).
-- `name` (String) The name of the managed database cluster.
 - `node_count` (Number) The number of nodes in the cluster. Changing this scales the cluster up or down one node at a time.
-- `plan_id` (Number) The plan identifier that determines node size.
-
-### Optional
-
-- `project_id` (String) The identifier of the project the cluster belongs to.
+- `project_identifier` (String) The UUID identifier of the project the cluster belongs to.
+- `resource_identifier` (String) The offer (plan) identifier that determines node size; see the managed database offers for the datacenter.
+- `vpc_id` (Number) The numeric id of the VPC the cluster is attached to.
 
 ### Read-Only
 
 - `admin_password` (String, Sensitive) The generated administrator password for the cluster.
-- `cluster_name` (String) The cluster name as reported by the API.
 - `cpu` (Number) The number of vCPUs per node.
 - `created_on` (String) The creation timestamp of the cluster.
 - `identifier` (String) The unique identifier of the managed database cluster.
+- `private_fqdn` (String) The private FQDN assigned to the cluster.
 - `ram` (Number) The amount of RAM per node.
 - `traffic` (Number) The traffic allowance for the cluster.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Managed databases are imported by their UUID identifier. Note: the offer,
+# VPC, project, and datacenter are not returned by the API, so those arguments
+# must be set in config (a plan after import will otherwise propose replacement).
+terraform import vpsie_managed_database.example "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+```
