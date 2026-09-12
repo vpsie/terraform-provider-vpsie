@@ -3,18 +3,43 @@
 page_title: "vpsie_firewall Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  
+  Manages a VPSie firewall (security) group and its rules. Attach the group to servers with vpsie_firewall_attachment.
 ---
 
 # vpsie_firewall (Resource)
 
-
+Manages a VPSie firewall (security) group and its rules. Attach the group to servers with `vpsie_firewall_attachment`.
 
 ## Example Usage
 
 ```terraform
 resource "vpsie_firewall" "example" {
-  group_name = "my-firewall-group"
+  group_name = "web-servers"
+
+  rule {
+    action  = "ACCEPT"
+    type    = "in"
+    proto   = "tcp"
+    macro   = "SSH" # a macro clears dport/sport
+    comment = "allow SSH"
+    source  = ["10.0.0.0/8"]
+  }
+
+  rule {
+    action  = "ACCEPT"
+    type    = "in"
+    proto   = "tcp"
+    dport   = "443"
+    comment = "allow HTTPS"
+  }
+
+  rule {
+    action  = "DROP"
+    type    = "out"
+    proto   = "udp"
+    dport   = "53"
+    comment = "block outbound DNS"
+  }
 }
 ```
 
@@ -23,87 +48,55 @@ resource "vpsie_firewall" "example" {
 
 ### Required
 
-- `group_name` (String)
+- `group_name` (String) Name of the firewall group (5-50 characters).
+
+### Optional
+
+- `rule` (Block List) A firewall rule. Rules are applied in the order given. (see [below for nested schema](#nestedblock--rule))
 
 ### Read-Only
 
-- `action` (String)
-- `category` (String)
-- `fullname` (String)
-- `group_id` (Number)
-- `hostname` (String)
+- `created_by` (Number)
+- `created_on` (String)
 - `id` (Number) The ID of this resource.
 - `identifier` (String)
-- `rules` (Attributes List) (see [below for nested schema](#nestedatt--rules))
-- `type` (String)
-- `user_id` (Number)
-- `vms_data` (Attributes List) (see [below for nested schema](#nestedatt--vms_data))
-
-<a id="nestedatt--rules"></a>
-### Nested Schema for `rules`
-
-Read-Only:
-
-- `in_bound` (Attributes List) (see [below for nested schema](#nestedatt--rules--in_bound))
-- `out_bound` (Attributes List) (see [below for nested schema](#nestedatt--rules--out_bound))
-
-<a id="nestedatt--rules--in_bound"></a>
-### Nested Schema for `rules.in_bound`
-
-Read-Only:
-
-- `action` (String)
-- `comment` (String)
-- `created_on` (String)
-- `dest` (List of List of String)
-- `dport` (String)
-- `enable` (Number)
-- `group_id` (Number)
-- `id` (Number)
-- `identifier` (String)
-- `iface` (String)
-- `log` (String)
-- `macro` (String)
-- `proto` (String)
-- `source` (List of List of String)
-- `sport` (String)
-- `type` (String)
+- `inbound_count` (Number)
+- `outbound_count` (Number)
 - `updated_on` (String)
-- `user_id` (Number)
+- `user_name` (String)
+- `vms_count` (Number)
 
+<a id="nestedblock--rule"></a>
+### Nested Schema for `rule`
 
-<a id="nestedatt--rules--out_bound"></a>
-### Nested Schema for `rules.out_bound`
+Required:
 
-Read-Only:
+- `action` (String) Rule action: `ACCEPT` or `DROP`.
+- `type` (String) Rule direction: `in` (inbound) or `out` (outbound).
 
-- `action` (String)
-- `comment` (String)
-- `created_on` (String)
-- `dest` (List of List of String)
-- `dport` (String)
-- `enable` (Number)
-- `group_id` (Number)
-- `id` (Number)
-- `identifier` (String)
-- `iface` (String)
-- `log` (String)
-- `macro` (String)
-- `proto` (String)
-- `source` (List of List of String)
-- `sport` (String)
-- `type` (String)
-- `updated_on` (String)
-- `user_id` (Number)
+Optional:
 
-
-
-<a id="nestedatt--vms_data"></a>
-### Nested Schema for `vms_data`
+- `comment` (String) An optional label. Within a single direction (`type`), comments must be unique; omit it to let the provider use a shared default.
+- `dest` (List of String) Destination IPs or CIDRs.
+- `dport` (String) Destination port or range (e.g. `80` or `8000:8100`). Ignored when `macro` is set.
+- `enable` (Number) Whether the rule is enabled (`1`) or disabled (`0`). Defaults to `1`.
+- `log` (String) Log level: one of emerge, alert, crit, err, warning, notice, info, debug, nolog.
+- `macro` (String) A predefined Proxmox macro (e.g. `SSH`, `HTTP`). Setting it clears `dport`/`sport`.
+- `proto` (String) Protocol: `tcp`, `udp`, or `icmp`.
+- `source` (List of String) Source IPs or CIDRs.
+- `sport` (String) Source port or range. Ignored when `macro` is set.
 
 Read-Only:
 
-- `category` (String)
-- `fullname` (String)
-- `hostname` (String)
 - `identifier` (String)
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Firewall groups are imported by their UUID identifier.
+terraform import vpsie_firewall.example "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+```

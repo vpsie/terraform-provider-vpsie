@@ -29,28 +29,16 @@ data "vpsie_firewalls" "example" {}
 
 Read-Only:
 
-- `action` (String)
-- `comment` (String)
 - `created_by` (Number)
 - `created_on` (String)
-- `dest` (List of List of String)
-- `dport` (String)
-- `enable` (Number)
-- `group_id` (Number)
+- `group_name` (String)
 - `id` (Number)
 - `identifier` (String)
-- `iface` (String)
 - `inbound_count` (Number)
-- `log` (String)
-- `macro` (String)
 - `outbound_count` (Number)
-- `proto` (String)
-- `rules` (Attributes List) (see [below for nested schema](#nestedatt--firewalls--rules))
-- `source` (List of List of String)
-- `sport` (String)
-- `type` (String)
+- `rules` (Attributes) (see [below for nested schema](#nestedatt--firewalls--rules))
 - `updated_on` (String)
-- `user_id` (Number)
+- `user_name` (String)
 - `vms` (Number)
 - `vms_data` (Attributes List) (see [below for nested schema](#nestedatt--firewalls--vms_data))
 
@@ -59,18 +47,18 @@ Read-Only:
 
 Read-Only:
 
-- `in_bound` (Attributes List) (see [below for nested schema](#nestedatt--firewalls--rules--in_bound))
-- `out_bound` (Attributes List) (see [below for nested schema](#nestedatt--firewalls--rules--out_bound))
+- `inbound` (Attributes List) (see [below for nested schema](#nestedatt--firewalls--rules--inbound))
+- `outbound` (Attributes List) (see [below for nested schema](#nestedatt--firewalls--rules--outbound))
 
-<a id="nestedatt--firewalls--rules--in_bound"></a>
-### Nested Schema for `firewalls.rules.in_bound`
+<a id="nestedatt--firewalls--rules--inbound"></a>
+### Nested Schema for `firewalls.rules.inbound`
 
 Read-Only:
 
 - `action` (String)
 - `comment` (String)
 - `created_on` (String)
-- `dest` (List of List of String)
+- `dest` (List of String)
 - `dport` (String)
 - `enable` (Number)
 - `group_id` (Number)
@@ -80,22 +68,22 @@ Read-Only:
 - `log` (String)
 - `macro` (String)
 - `proto` (String)
-- `source` (List of List of String)
+- `source` (List of String)
 - `sport` (String)
 - `type` (String)
 - `updated_on` (String)
 - `user_id` (Number)
 
 
-<a id="nestedatt--firewalls--rules--out_bound"></a>
-### Nested Schema for `firewalls.rules.out_bound`
+<a id="nestedatt--firewalls--rules--outbound"></a>
+### Nested Schema for `firewalls.rules.outbound`
 
 Read-Only:
 
 - `action` (String)
 - `comment` (String)
 - `created_on` (String)
-- `dest` (List of List of String)
+- `dest` (List of String)
 - `dport` (String)
 - `enable` (Number)
 - `group_id` (Number)
@@ -105,7 +93,7 @@ Read-Only:
 - `log` (String)
 - `macro` (String)
 - `proto` (String)
-- `source` (List of List of String)
+- `source` (List of String)
 - `sport` (String)
 - `type` (String)
 - `updated_on` (String)

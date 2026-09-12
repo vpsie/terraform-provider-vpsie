@@ -32,13 +32,13 @@ type firewallsModel struct {
 	Vms           types.Int64  `tfsdk:"vms"`
 	CreatedBy     types.Int64  `tfsdk:"created_by"`
 
-	Rules   []FirewallRules `tfsdk:"rules"`
-	VmsData []VmsData       `tfsdk:"vms_data"`
+	Rules   FirewallRules `tfsdk:"rules"`
+	VmsData []VmsData     `tfsdk:"vms_data"`
 }
 
 type FirewallRules struct {
-	InBound  []InBoundFirewallRules  `tfsdk:"inBound"`
-	OutBound []OutBoundFirewallRules `tfsdk:"outBound"`
+	InBound  []InBoundFirewallRules  `tfsdk:"inbound"`
+	OutBound []OutBoundFirewallRules `tfsdk:"outbound"`
 }
 
 type InBoundFirewallRules struct {
@@ -51,12 +51,12 @@ type InBoundFirewallRules struct {
 	Dest       types.List   `tfsdk:"dest"`
 	Dport      types.String `tfsdk:"dport"`
 	Proto      types.String `tfsdk:"proto"`
-	Source     types.List   `tfsdk:"source,omitempty"`
+	Source     types.List   `tfsdk:"source"`
 	Sport      types.String `tfsdk:"sport"`
 	Enable     types.Int64  `tfsdk:"enable"`
-	Iface      types.String `tfsdk:"iface,omitempty"`
-	Log        types.String `tfsdk:"log,omitempty"`
-	Macro      types.String `tfsdk:"macro,omitempty"`
+	Iface      types.String `tfsdk:"iface"`
+	Log        types.String `tfsdk:"log"`
+	Macro      types.String `tfsdk:"macro"`
 	Identifier types.String `tfsdk:"identifier"`
 	CreatedOn  types.String `tfsdk:"created_on"`
 	UpdatedOn  types.String `tfsdk:"updated_on"`
@@ -69,15 +69,15 @@ type OutBoundFirewallRules struct {
 	Action     types.String `tfsdk:"action"`
 	Type       types.String `tfsdk:"type"`
 	Comment    types.String `tfsdk:"comment"`
-	Dest       types.List   `tfsdk:"dest,omitempty"`
+	Dest       types.List   `tfsdk:"dest"`
 	Dport      types.String `tfsdk:"dport"`
 	Proto      types.String `tfsdk:"proto"`
 	Source     types.List   `tfsdk:"source"`
 	Sport      types.String `tfsdk:"sport"`
 	Enable     types.Int64  `tfsdk:"enable"`
-	Iface      types.String `tfsdk:"iface,omitempty"`
-	Log        types.String `tfsdk:"log,omitempty"`
-	Macro      types.String `tfsdk:"macro,omitempty"`
+	Iface      types.String `tfsdk:"iface"`
+	Log        types.String `tfsdk:"log"`
+	Macro      types.String `tfsdk:"macro"`
 	Identifier types.String `tfsdk:"identifier"`
 	CreatedOn  types.String `tfsdk:"created_on"`
 	UpdatedOn  types.String `tfsdk:"updated_on"`
@@ -88,11 +88,6 @@ type VmsData struct {
 	Identifier types.String `tfsdk:"identifier"`
 	Fullname   types.String `tfsdk:"fullname"`
 	Category   types.String `tfsdk:"category"`
-}
-
-type AttachedVM struct {
-	Identifier       types.String `tfsdk:"identifier"`
-	GatewayMappingID types.Int64  `tfsdk:"gateway_mapping_id"`
 }
 
 // NewFirewallDataSource is a helper function to create the data source.
@@ -125,10 +120,8 @@ var common map[string]schema.Attribute = map[string]schema.Attribute{
 		Computed: true,
 	},
 	"dest": schema.ListAttribute{
-		ElementType: types.ListType{
-			ElemType: types.StringType,
-		},
-		Computed: true,
+		ElementType: types.StringType,
+		Computed:    true,
 	},
 	"dport": schema.StringAttribute{
 		Computed: true,
@@ -137,10 +130,8 @@ var common map[string]schema.Attribute = map[string]schema.Attribute{
 		Computed: true,
 	},
 	"source": schema.ListAttribute{
-		ElementType: types.ListType{
-			ElemType: types.StringType,
-		},
-		Computed: true,
+		ElementType: types.StringType,
+		Computed:    true,
 	},
 	"sport": schema.StringAttribute{
 		Computed: true,
@@ -182,52 +173,10 @@ func (g *firewallDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 						"id": schema.Int64Attribute{
 							Computed: true,
 						},
-						"group_id": schema.Int64Attribute{
+						"user_name": schema.StringAttribute{
 							Computed: true,
 						},
-						"user_id": schema.Int64Attribute{
-							Computed: true,
-						},
-						"action": schema.StringAttribute{
-							Computed: true,
-						},
-						"type": schema.StringAttribute{
-							Computed: true,
-						},
-						"comment": schema.StringAttribute{
-							Computed: true,
-						},
-						"dest": schema.ListAttribute{
-							ElementType: types.ListType{
-								ElemType: types.StringType,
-							},
-							Computed: true,
-						},
-						"dport": schema.StringAttribute{
-							Computed: true,
-						},
-						"proto": schema.StringAttribute{
-							Computed: true,
-						},
-						"source": schema.ListAttribute{
-							ElementType: types.ListType{
-								ElemType: types.StringType,
-							},
-							Computed: true,
-						},
-						"sport": schema.StringAttribute{
-							Computed: true,
-						},
-						"enable": schema.Int64Attribute{
-							Computed: true,
-						},
-						"iface": schema.StringAttribute{
-							Computed: true,
-						},
-						"log": schema.StringAttribute{
-							Computed: true,
-						},
-						"macro": schema.StringAttribute{
+						"group_name": schema.StringAttribute{
 							Computed: true,
 						},
 						"identifier": schema.StringAttribute{
@@ -251,21 +200,19 @@ func (g *firewallDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 						"created_by": schema.Int64Attribute{
 							Computed: true,
 						},
-						"rules": schema.ListNestedAttribute{
+						"rules": schema.SingleNestedAttribute{
 							Computed: true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									"in_bound": schema.ListNestedAttribute{
-										Computed: true,
-										NestedObject: schema.NestedAttributeObject{
-											Attributes: common,
-										},
+							Attributes: map[string]schema.Attribute{
+								"inbound": schema.ListNestedAttribute{
+									Computed: true,
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: common,
 									},
-									"out_bound": schema.ListNestedAttribute{
-										Computed: true,
-										NestedObject: schema.NestedAttributeObject{
-											Attributes: common,
-										},
+								},
+								"outbound": schema.ListNestedAttribute{
+									Computed: true,
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: common,
 									},
 								},
 							},
@@ -311,82 +258,60 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 	}
 
 	for _, firewall := range firewalls {
-		var rules []FirewallRules
-		var vmsData []VmsData
+		var inBound []InBoundFirewallRules
+		var outBound []OutBoundFirewallRules
 
-		for _, rule := range firewall.Rules {
-			var curRule FirewallRules
-			var inBound []InBoundFirewallRules
-			var outBound []OutBoundFirewallRules
-
-			for _, in := range rule.InBound {
-				dest := []types.String{}
-				source := []types.String{}
-				for _, d := range in.Dest {
-					dest = append(dest, types.StringValue(d))
-				}
-				for _, s := range in.Source {
-					source = append(source, types.StringValue(s))
-				}
-
-				dest_list, _ := types.ListValueFrom(ctx, types.StringType, dest)
-				source_list, _ := types.ListValueFrom(ctx, types.StringType, source)
-
-				inBound = append(inBound, InBoundFirewallRules{
-					ID:         types.Int64Value(in.ID),
-					GroupID:    types.Int64Value(in.GroupID),
-					UserID:     types.Int64Value(in.UserID),
-					Action:     types.StringValue(in.Action),
-					Type:       types.StringValue(in.Type),
-					Comment:    types.StringValue(in.Comment),
-					Dest:       dest_list,
-					Dport:      types.StringValue(in.Dport),
-					Proto:      types.StringValue(in.Proto),
-					Source:     source_list,
-					Sport:      types.StringValue(in.Sport),
-					Enable:     types.Int64Value(in.Enable),
-					Iface:      types.StringValue(in.Iface),
-					Log:        types.StringValue(in.Log),
-					Macro:      types.StringValue(in.Macro),
-					Identifier: types.StringValue(in.Identifier),
-					CreatedOn:  types.StringValue(in.CreatedOn.String()),
-					UpdatedOn:  types.StringValue(in.UpdatedOn.String()),
-				})
-			}
-
-			for _, out := range rule.OutBound {
-
-				dest_list, _ := types.ListValueFrom(ctx, types.StringType, out.Dest)
-				source_list, _ := types.ListValueFrom(ctx, types.StringType, out.Source)
-
-				outBound = append(outBound, OutBoundFirewallRules{
-					ID:         types.Int64Value(out.ID),
-					GroupID:    types.Int64Value(out.GroupID),
-					UserID:     types.Int64Value(out.UserID),
-					Action:     types.StringValue(out.Action),
-					Type:       types.StringValue(out.Type),
-					Comment:    types.StringValue(out.Comment),
-					Dest:       dest_list,
-					Dport:      types.StringValue(out.Dport),
-					Proto:      types.StringValue(out.Proto),
-					Source:     source_list,
-					Sport:      types.StringValue(out.Sport),
-					Enable:     types.Int64Value(out.Enable),
-					Iface:      types.StringValue(out.Iface),
-					Log:        types.StringValue(out.Log),
-					Macro:      types.StringValue(out.Macro),
-					Identifier: types.StringValue(out.Identifier),
-					CreatedOn:  types.StringValue(out.CreatedOn.String()),
-					UpdatedOn:  types.StringValue(out.UpdatedOn.String()),
-				})
-			}
-
-			curRule.InBound = inBound
-			curRule.OutBound = outBound
-
-			rules = append(rules, curRule)
+		for _, in := range firewall.Rules.InBound {
+			destList, _ := types.ListValueFrom(ctx, types.StringType, in.Dest)
+			sourceList, _ := types.ListValueFrom(ctx, types.StringType, in.Source)
+			inBound = append(inBound, InBoundFirewallRules{
+				ID:         types.Int64Value(in.ID),
+				GroupID:    types.Int64Value(in.GroupID),
+				UserID:     types.Int64Value(in.UserID),
+				Action:     types.StringValue(in.Action),
+				Type:       types.StringValue(in.Type),
+				Comment:    types.StringValue(in.Comment),
+				Dest:       destList,
+				Dport:      types.StringValue(in.Dport),
+				Proto:      types.StringValue(in.Proto),
+				Source:     sourceList,
+				Sport:      types.StringValue(in.Sport),
+				Enable:     types.Int64Value(in.Enable),
+				Iface:      types.StringValue(in.Iface),
+				Log:        types.StringValue(in.Log),
+				Macro:      types.StringValue(in.Macro),
+				Identifier: types.StringValue(in.Identifier),
+				CreatedOn:  types.StringValue(in.CreatedOn.String()),
+				UpdatedOn:  types.StringValue(in.UpdatedOn.String()),
+			})
 		}
 
+		for _, out := range firewall.Rules.OutBound {
+			destList, _ := types.ListValueFrom(ctx, types.StringType, out.Dest)
+			sourceList, _ := types.ListValueFrom(ctx, types.StringType, out.Source)
+			outBound = append(outBound, OutBoundFirewallRules{
+				ID:         types.Int64Value(out.ID),
+				GroupID:    types.Int64Value(out.GroupID),
+				UserID:     types.Int64Value(out.UserID),
+				Action:     types.StringValue(out.Action),
+				Type:       types.StringValue(out.Type),
+				Comment:    types.StringValue(out.Comment),
+				Dest:       destList,
+				Dport:      types.StringValue(out.Dport),
+				Proto:      types.StringValue(out.Proto),
+				Source:     sourceList,
+				Sport:      types.StringValue(out.Sport),
+				Enable:     types.Int64Value(out.Enable),
+				Iface:      types.StringValue(out.Iface),
+				Log:        types.StringValue(out.Log),
+				Macro:      types.StringValue(out.Macro),
+				Identifier: types.StringValue(out.Identifier),
+				CreatedOn:  types.StringValue(out.CreatedOn.String()),
+				UpdatedOn:  types.StringValue(out.UpdatedOn.String()),
+			})
+		}
+
+		var vmsData []VmsData
 		for _, vm := range firewall.VmsData {
 			vmsData = append(vmsData, VmsData{
 				Hostname:   types.StringValue(vm.Hostname),
@@ -407,12 +332,20 @@ func (f *firewallDataSource) Read(ctx context.Context, req datasource.ReadReques
 			OutboundCount: types.Int64Value(firewall.OutboundCount),
 			Vms:           types.Int64Value(firewall.Vms),
 			CreatedBy:     types.Int64Value(firewall.CreatedBy),
-			Rules:         rules,
-			VmsData:       vmsData,
+			Rules: FirewallRules{
+				InBound:  inBound,
+				OutBound: outBound,
+			},
+			VmsData: vmsData,
 		}
 
 		state.Firewalls = append(state.Firewalls, firewallState)
 	}
+
+	state.ID = types.StringValue("firewalls")
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
 }
 func (g *firewallDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.

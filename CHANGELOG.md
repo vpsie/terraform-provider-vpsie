@@ -16,6 +16,16 @@ FEATURES:
 
 BUG FIXES:
 
+- **`vpsie_firewall`:** the resource was non-functional — its schema and model
+  were misaligned (a value-conversion crash), rules were marked read-only so they
+  could never be set, and delete failed with HTTP 500 because the required
+  `deleteStatistic` payload was missing. The resource is rewritten with a
+  settable `rule` block (validated `action`/`type`), full create/read/update
+  (rename plus in-place rule reconciliation)/delete, drift-safe reads, and import
+  by group identifier.
+- **`vpsie_firewalls` (data source):** never wrote its result to state and could
+  not decode the rules payload (the API returns an object, not a list). Fixed the
+  SDK types and the data source so it returns groups with their rules.
 - **`vpsie_dns_record`:** fixed deletion, which posted to a non-existent
   `/domain/dnsRecord/delete` path and always failed with "Not found"; it now uses
   the correct `DELETE /domain/dnsRecord` route. Read is now implemented against the
