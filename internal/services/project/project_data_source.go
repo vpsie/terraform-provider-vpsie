@@ -111,6 +111,12 @@ func (p *projectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 		state.Projects = append(state.Projects, projectState)
 	}
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 func (p *projectDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.

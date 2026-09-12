@@ -141,6 +141,12 @@ func (i *imageDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 
 		state.Images = append(state.Images, imageState)
 	}
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 func (i *imageDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.

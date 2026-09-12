@@ -141,6 +141,12 @@ func (k *loadbalancerDataSource) Read(ctx context.Context, req datasource.ReadRe
 
 		state.Loadbalancers = append(state.Loadbalancers, lbState)
 	}
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 func (l *loadbalancerDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.

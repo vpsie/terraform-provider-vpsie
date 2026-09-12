@@ -180,6 +180,12 @@ func (k *kubernetesGroupDataSource) Read(ctx context.Context, req datasource.Rea
 		}
 
 	}
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 func (k *kubernetesGroupDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {

@@ -138,6 +138,12 @@ func (k *kubernetesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 		state.Kubernetes = append(state.Kubernetes, k8sState)
 	}
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 func (k *kubernetesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.

@@ -96,6 +96,12 @@ func (d *domainDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 		state.Domains = append(state.Domains, domainState)
 	}
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 func (d *domainDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
