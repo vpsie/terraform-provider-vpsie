@@ -3,12 +3,15 @@
 page_title: "vpsie_loadbalancer Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  
+  Manages a VPSie load balancer, including its listener rules, virtual-host domains and backends.
+  Changing dc_identifier, resource_identifier, private_lb, vpc_id or project_id replaces the load balancer, which releases its IP address. Renaming and rule changes are applied in place.
 ---
 
 # vpsie_loadbalancer (Resource)
 
+Manages a VPSie load balancer, including its listener rules, virtual-host domains and backends.
 
+Changing `dc_identifier`, `resource_identifier`, `private_lb`, `vpc_id` or `project_id` replaces the load balancer, which releases its IP address. Renaming and rule changes are applied in place.
 
 ## Example Usage
 
@@ -25,83 +28,112 @@ resource "vpsie_loadbalancer" "example" {
 
 ### Required
 
-- `boxsize_id` (Number)
-- `lb_name` (String)
-- `traffic` (Number)
+- `dc_identifier` (String) Identifier of the datacenter to deploy into. Changing this forces a new load balancer.
+- `lb_name` (String) Name of the load balancer (2-64 characters). Updating it renames the load balancer in place.
+- `resource_identifier` (String) Identifier of the load balancer offer (size). Changing this forces a new load balancer.
+
+### Optional
+
+- `private_lb` (Boolean) Whether the load balancer is private (VPC-only). Requires `vpc_id`. Changing this forces a new load balancer.
+- `project_id` (String) Identifier of the project owning the load balancer. Changing this forces a new load balancer.
+- `rule` (Block List) A listener on the load balancer. At least one rule is required. (see [below for nested schema](#nestedblock--rule))
+- `tags` (List of String) Tag names to apply at creation time. Changing this forces a new load balancer; use `vpsie_tag` to manage tags over time.
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
+- `vpc_id` (Number) Numeric VPC id to attach the load balancer to. Required when `private_lb` is true. Changing this forces a new load balancer.
 
 ### Read-Only
 
-- `algorithm` (String)
-- `check_interval` (Number)
-- `cookie_check` (Number)
-- `cookie_name` (String)
-- `created_by` (String)
-- `dc_id` (String)
-- `dc_name` (String)
-- `default_ip` (String)
-- `fall` (Number)
-- `fast_interval` (Number)
-- `health_check_path` (String)
-- `id` (Number) The ID of this resource.
-- `identifier` (String)
-- `redirect_http` (Number)
-- `rise` (Number)
-- `rules` (Attributes List) (see [below for nested schema](#nestedatt--rules))
-- `timeout` (Number)
-- `user_id` (Number)
+- `boxsize_id` (Number) Numeric id of the offer backing the load balancer.
+- `created_by` (String) Account that created the load balancer.
+- `dc_name` (String) Human-readable datacenter name.
+- `default_ip` (String) IP address the load balancer listens on.
+- `identifier` (String) Identifier of the load balancer assigned by the API.
+- `traffic` (Number) Traffic allowance of the selected offer, in TB.
+- `user_id` (Number) Numeric id of the owning user.
 
-<a id="nestedatt--rules"></a>
-### Nested Schema for `rules`
+<a id="nestedblock--rule"></a>
+### Nested Schema for `rule`
 
-Read-Only:
+Required:
 
-- `back_port` (Number)
-- `backends` (Attributes List) (see [below for nested schema](#nestedatt--rules--backends))
-- `created_on` (String)
-- `domains` (Attributes List) (see [below for nested schema](#nestedatt--rules--domains))
-- `front_port` (Number)
-- `rule_id` (String)
-- `scheme` (String)
+- `front_port` (Number) Port the load balancer listens on.
+- `scheme` (String) Listener protocol. One of `http`, `https`, `http2` or `tcp`.
 
-<a id="nestedatt--rules--backends"></a>
-### Nested Schema for `rules.backends`
+Optional:
+
+- `back_port` (Number) Port on the backend targets. Required when `scheme` is `tcp`.
+- `backend` (Block List) A backend target receiving traffic for this listener. (see [below for nested schema](#nestedblock--rule--backend))
+- `domain` (Block List) A virtual host served by this listener, with its own health checks and backends. (see [below for nested schema](#nestedblock--rule--domain))
+- `proxy_mode` (Boolean) Enable PROXY protocol towards the backends.
 
 Read-Only:
 
-- `created_on` (String)
-- `identifier` (String)
-- `ip` (String)
-- `vm_identifier` (String)
+- `rule_id` (String) Rule identifier assigned by the API.
 
+<a id="nestedblock--rule--backend"></a>
+### Nested Schema for `rule.backend`
 
-<a id="nestedatt--rules--domains"></a>
-### Nested Schema for `rules.domains`
+Required:
 
-Read-Only:
+- `ip` (String) IPv4 address of the backend target.
 
-- `algorithm` (String)
-- `back_port` (Number)
-- `backend_scheme` (String)
-- `backends` (Attributes List) (see [below for nested schema](#nestedatt--rules--domains--backends))
-- `check_interval` (Number)
-- `cookie_check` (Number)
-- `cookie_name` (String)
-- `created_on` (String)
-- `domain_id` (String)
-- `domain_name` (String)
-- `fall` (Number)
-- `fast_interval` (Number)
-- `health_check_path` (String)
-- `redirect_http` (Number)
-- `rise` (Number)
-- `subdomain` (String)
+Optional:
 
-<a id="nestedatt--rules--domains--backends"></a>
-### Nested Schema for `rules.domains.backends`
+- `type` (String) Backend type. One of `vm` or `k8s`. Defaults to `vm`.
+- `vm_identifier` (String) Identifier of the VPSie VM serving this backend, when the target is a VM.
 
 Read-Only:
 
-- `created_on` (String)
-- `identifier` (String)
-- `ip` (String)
-- `vm_identifier` (String)
+- `identifier` (String) Backend identifier assigned by the API.
+
+
+<a id="nestedblock--rule--domain"></a>
+### Nested Schema for `rule.domain`
+
+Optional:
+
+- `algorithm` (String) Balancing algorithm. One of `roundrobin` or `leastconn`.
+- `back_port` (Number) Port on the backend targets for this virtual host.
+- `backend` (Block List) A backend target receiving traffic for this listener. (see [below for nested schema](#nestedblock--rule--domain--backend))
+- `backend_scheme` (String) Protocol used towards the backends. One of `http` or `https`.
+- `check_interval` (Number) Health check interval in milliseconds (minimum 100).
+- `cookie_check` (Boolean) Enable cookie-based session persistence.
+- `cookie_name` (String) Name of the persistence cookie when `cookie_check` is enabled.
+- `domain_name` (String) Fully-qualified domain name served by this virtual host.
+- `fall` (Number) Consecutive failed checks before a target is considered unhealthy.
+- `fast_interval` (Number) Health check interval in milliseconds while a target is in transition (minimum 100).
+- `health_check_path` (String) HTTP path polled for health checks.
+- `pass_through` (Boolean) Pass TLS through to the backends without terminating it.
+- `redirect_http` (Number) Set to `1` to redirect plain HTTP to HTTPS.
+- `rise` (Number) Consecutive successful checks before a target is considered healthy.
+- `subdomain` (String) Subdomain label served by this virtual host.
+
+Read-Only:
+
+- `domain_id` (String) Domain identifier assigned by the API.
+
+<a id="nestedblock--rule--domain--backend"></a>
+### Nested Schema for `rule.domain.backend`
+
+Required:
+
+- `ip` (String) IPv4 address of the backend target.
+
+Optional:
+
+- `type` (String) Backend type. One of `vm` or `k8s`. Defaults to `vm`.
+- `vm_identifier` (String) Identifier of the VPSie VM serving this backend, when the target is a VM.
+
+Read-Only:
+
+- `identifier` (String) Backend identifier assigned by the API.
+
+
+
+
+<a id="nestedatt--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
