@@ -1040,14 +1040,25 @@ func (s *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	// The delete API authenticates the destroy with the server's password, so a
-	// server created without one cannot be destroyed through the provider.
-	if state.Password.IsNull() || state.Password.ValueString() == "" {
+	// The delete endpoint confirms the operation against the ACCOUNT password,
+	// not the server's own root password. Prefer the provider-level
+	// account_password and fall back to the resource password only so that
+	// existing configurations where the two happen to match keep working.
+	//
+	// Getting this wrong is silent: the API answers "You entered the wrong
+	// password" while still returning HTTP 200, so the server keeps running --
+	// and billing -- after Terraform has dropped it from state.
+	deletePassword := s.client.AccountPassword
+	if deletePassword == "" {
+		deletePassword = state.Password.ValueString()
+	}
+
+	if deletePassword == "" {
 		resp.Diagnostics.AddError(
-			"Cannot delete server without a password",
-			fmt.Sprintf("The VPSIE delete API requires the server's password, but %q has none recorded in state. "+
-				"Set `password` on the resource and apply before destroying, or remove the server from state with "+
-				"`terraform state rm` and delete it from the VPSIE console.", state.Hostname.ValueString()),
+			"Cannot delete server without the account password",
+			fmt.Sprintf("Destroying %q requires the password of the VPSIE account that owns it. "+
+				"Set `account_password` on the provider (or the VPSIE_ACCOUNT_PASSWORD environment "+
+				"variable) and try again.", state.Hostname.ValueString()),
 		)
 
 		return
@@ -1064,7 +1075,7 @@ func (s *serverResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	} else {
 		deleteNote = state.DeleteNote.ValueString()
 	}
-	err := s.client.Server.DeleteServer(ctx, state.Identifier.ValueString(), state.Password.ValueString(), deleteReason, deleteNote)
+	err := s.client.Server.DeleteServer(ctx, state.Identifier.ValueString(), deletePassword, deleteReason, deleteNote)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting server",

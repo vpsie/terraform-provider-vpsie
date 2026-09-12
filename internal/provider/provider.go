@@ -60,8 +60,9 @@ type VpsieProvider struct {
 
 // VpsieProviderModel describes the provider data model.
 type VpsieProviderModel struct {
-	AccessToken types.String `tfsdk:"access_token"`
-	Endpoint    types.String `tfsdk:"endpoint"`
+	AccessToken     types.String `tfsdk:"access_token"`
+	Endpoint        types.String `tfsdk:"endpoint"`
+	AccountPassword types.String `tfsdk:"account_password"`
 }
 
 func (p *VpsieProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -87,6 +88,17 @@ func (p *VpsieProvider) Schema(ctx context.Context, req provider.SchemaRequest, 
 					"`https://api.vpsie.com/apps/v2`. May also be set via the `VPSIE_ENDPOINT` " +
 					"environment variable. Useful for testing against non-production environments.",
 				Optional: true,
+			},
+			"account_password": schema.StringAttribute{
+				MarkdownDescription: "Password of the VPSie account the access token belongs to. " +
+					"May also be provided via the `VPSIE_ACCOUNT_PASSWORD` environment variable.\n\n" +
+					"Destroying a `vpsie_server` requires it: the delete endpoint confirms the " +
+					"operation against the **account** password, not the server's own root password. " +
+					"Without it the API answers `You entered the wrong password` while still " +
+					"returning HTTP 200, so the server keeps running and billing after Terraform " +
+					"has dropped it from state.",
+				Optional:  true,
+				Sensitive: true,
 			},
 		},
 	}
@@ -160,7 +172,13 @@ func (p *VpsieProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		}
 	}
 
-	// Make the HashiCups client available during DataSource and Resource
+	accountPassword := os.Getenv("VPSIE_ACCOUNT_PASSWORD")
+	if !data.AccountPassword.IsNull() {
+		accountPassword = data.AccountPassword.ValueString()
+	}
+	client.SetAccountPassword(accountPassword)
+
+	// Make the client available during DataSource and Resource
 	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client

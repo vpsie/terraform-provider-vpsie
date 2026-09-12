@@ -47,4 +47,7 @@ resource "vpsie_server_group" "web" {
 ### Optional
 
 - `access_token` (String, Sensitive) The VPSie API access token used to authenticate requests. May also be provided via the `VPSIE_ACCESS_TOKEN` environment variable.
+- `account_password` (String, Sensitive) Password of the VPSie account the access token belongs to. May also be provided via the `VPSIE_ACCOUNT_PASSWORD` environment variable.
+
+Destroying a `vpsie_server` requires it: the delete endpoint confirms the operation against the **account** password, not the server's own root password. Without it the API answers `You entered the wrong password` while still returning HTTP 200, so the server keeps running and billing after Terraform has dropped it from state.
 - `endpoint` (String) Override the VPSie API base URL. Defaults to `https://api.vpsie.com/apps/v2`. May also be set via the `VPSIE_ENDPOINT` environment variable. Useful for testing against non-production environments.
