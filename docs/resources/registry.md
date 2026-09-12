@@ -3,20 +3,21 @@
 page_title: "vpsie_registry Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  Manages a VPSie container registry.
+  Manages a VPSie container registry. Only one registry may exist per datacenter per account. On import, plan_identifier and project_identifier are not returned by the API and must be set in configuration to match the registry.
 ---
 
 # vpsie_registry (Resource)
 
-Manages a VPSie container registry.
+Manages a VPSie container registry. Only one registry may exist per datacenter per account. On import, `plan_identifier` and `project_identifier` are not returned by the API and must be set in configuration to match the registry.
 
 ## Example Usage
 
 ```terraform
 resource "vpsie_registry" "example" {
   name                  = "my-registry"
-  datacenter_identifier = "datacenter-identifier"
-  plan_identifier       = "plan-identifier"
+  datacenter_identifier = "datacenter-uuid-identifier"
+  plan_identifier       = "plan-uuid-identifier"
+  project_identifier    = "project-uuid-identifier"
 }
 ```
 
@@ -28,9 +29,22 @@ resource "vpsie_registry" "example" {
 - `datacenter_identifier` (String) The identifier of the datacenter that hosts the registry.
 - `name` (String) The name of the registry.
 - `plan_identifier` (String) The identifier of the resource plan for the registry.
+- `project_identifier` (String) The UUID identifier of the project to create the registry in.
 
 ### Read-Only
 
 - `created_on` (String) The creation timestamp of the registry.
 - `identifier` (String) The unique identifier of the registry.
 - `status` (String) The current status of the registry.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Registries are imported by their registry id (UUID). Note: plan_identifier and
+# project_identifier are not returned by the API and must be set in config.
+terraform import vpsie_registry.example "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+```

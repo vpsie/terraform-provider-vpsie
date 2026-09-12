@@ -16,6 +16,15 @@ FEATURES:
 
 BUG FIXES:
 
+- **`vpsie_registry`:** registry creation never worked — the request sent the
+  wrong field names and omitted the project. The API expects `datacenterId`,
+  `resourceIdentifier` (the plan), and a `projectId` (the project's UUID); a new
+  required `project_identifier` argument supplies the project, and the create
+  request now uses the correct fields. The list response was also mismodeled
+  (`registry_id`/`registry_name`/`dc_name`), so reads returned blanks; the SDK
+  types are corrected. Create, read, no-drift plan, and delete are verified
+  against the live API. (On import, the plan and project are returned only as
+  numeric ids, so those two identifiers must be set in config.)
 - **`vpsie_server`:** server creation could never succeed. The project was sent
   as a numeric `project_id`, but the API requires the project's UUID identifier
   as a string (it rejects a number outright); a new required `project_identifier`

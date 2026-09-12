@@ -29,6 +29,7 @@ type registryResourceModel struct {
 	Name                 types.String `tfsdk:"name"`
 	DatacenterIdentifier types.String `tfsdk:"datacenter_identifier"`
 	PlanIdentifier       types.String `tfsdk:"plan_identifier"`
+	ProjectIdentifier    types.String `tfsdk:"project_identifier"`
 	Status               types.String `tfsdk:"status"`
 	CreatedOn            types.String `tfsdk:"created_on"`
 }
@@ -44,7 +45,9 @@ func (r *registryResource) Metadata(_ context.Context, req resource.MetadataRequ
 
 func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a VPSie container registry.",
+		MarkdownDescription: "Manages a VPSie container registry. Only one registry may exist per " +
+			"datacenter per account. On import, `plan_identifier` and `project_identifier` are not " +
+			"returned by the API and must be set in configuration to match the registry.",
 		Attributes: map[string]schema.Attribute{
 			"identifier": schema.StringAttribute{
 				MarkdownDescription: "The unique identifier of the registry.",
@@ -69,6 +72,13 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"plan_identifier": schema.StringAttribute{
 				MarkdownDescription: "The identifier of the resource plan for the registry.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"project_identifier": schema.StringAttribute{
+				MarkdownDescription: "The UUID identifier of the project to create the registry in.",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -119,7 +129,7 @@ func (r *registryResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	err := r.client.Registry.Create(ctx, plan.Name.ValueString(), plan.DatacenterIdentifier.ValueString(), plan.PlanIdentifier.ValueString())
+	err := r.client.Registry.Create(ctx, plan.Name.ValueString(), plan.DatacenterIdentifier.ValueString(), plan.PlanIdentifier.ValueString(), plan.ProjectIdentifier.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating registry",
@@ -179,6 +189,12 @@ func (r *registryResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 	if registry.CreatedOn != "" {
 		state.CreatedOn = types.StringValue(registry.CreatedOn)
+	}
+	// On import only the identifier is known; recover the datacenter the API
+	// reports. The plan and project are returned only as numeric ids, so their
+	// UUID identifiers cannot be recovered here and must be set in config.
+	if state.DatacenterIdentifier.IsNull() && registry.DcIdentifier != "" {
+		state.DatacenterIdentifier = types.StringValue(registry.DcIdentifier)
 	}
 
 	diags = resp.State.Set(ctx, &state)
