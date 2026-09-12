@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -94,6 +95,9 @@ func (s *snapshotPolicyResource) Schema(_ context.Context, _ resource.SchemaRequ
 			},
 			"disabled": schema.Int64Attribute{
 				Computed: true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -179,6 +183,13 @@ func (s *snapshotPolicyResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
+	// The API returns no policy (data: false) when it has been removed out of
+	// band; drop it from state so Terraform plans its recreation.
+	if policy == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
 	state.Name = types.StringValue(policy.Name)
 	state.BackupPlan = types.StringValue(policy.BackupPlan)
 	state.PlanEvery = types.StringValue(fmt.Sprintf("%d", policy.PlanEvery))
@@ -187,13 +198,19 @@ func (s *snapshotPolicyResource) Read(ctx context.Context, req resource.ReadRequ
 	state.CreatedBy = types.StringValue(policy.CreatedBy)
 	state.Disabled = types.Int64Value(policy.Disabled)
 
-	var vmIdentifiers []string
-	for _, vm := range policy.Vms {
-		vmIdentifiers = append(vmIdentifiers, vm.Identifier)
-	}
-	vmsList, vmsDiags := types.ListValueFrom(ctx, types.StringType, vmIdentifiers)
-	resp.Diagnostics.Append(vmsDiags...)
-	if !resp.Diagnostics.HasError() {
+	// Refresh the VM set from the API when it has any members or the config
+	// already tracks it. Leaving a null config value untouched when the policy
+	// has no VMs keeps plans clean for the common (VM-less) case.
+	if len(policy.Vms) > 0 || !state.Vms.IsNull() {
+		vmIdentifiers := make([]string, 0, len(policy.Vms))
+		for _, vm := range policy.Vms {
+			vmIdentifiers = append(vmIdentifiers, vm.Identifier)
+		}
+		vmsList, vmsDiags := types.ListValueFrom(ctx, types.StringType, vmIdentifiers)
+		resp.Diagnostics.Append(vmsDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		state.Vms = vmsList
 	}
 

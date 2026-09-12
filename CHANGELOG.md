@@ -14,6 +14,22 @@ FEATURES:
 - **New Data Source:** `vpsie_registries`
 - **New Data Source:** `vpsie_managed_databases`
 
+BUG FIXES:
+
+- **`vpsie_dns_record`:** fixed deletion, which posted to a non-existent
+  `/domain/dnsRecord/delete` path and always failed with "Not found"; it now uses
+  the correct `DELETE /domain/dnsRecord` route. Read is now implemented against the
+  parent domain (records are matched by name/type/content) so drift and out-of-band
+  deletions are detected, and the resource can be imported via
+  `domain_identifier/type/name/content`.
+- **`vpsie_backup_policy`:** fixed reads, which queried the wrong (plural)
+  `/backups/policy/:id` route and returned "Not found"; the singular
+  `/backup/policy/:id` route is now used. Attached VMs are now parsed correctly
+  (the API returns VM objects, not strings), and a policy deleted out of band is
+  removed from state instead of erroring.
+- **`vpsie_snapshot_policy`:** a policy deleted out of band is now removed from
+  state instead of erroring.
+
 ENHANCEMENTS:
 
 - Added an `endpoint` provider argument (and `VPSIE_ENDPOINT`) to target

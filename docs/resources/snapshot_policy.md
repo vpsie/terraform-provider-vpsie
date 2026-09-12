@@ -41,3 +41,14 @@ resource "vpsie_snapshot_policy" "example" {
 - `created_on` (String)
 - `disabled` (Number)
 - `identifier` (String)
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Snapshot policies are imported by their UUID identifier.
+terraform import vpsie_snapshot_policy.example "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+```

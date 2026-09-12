@@ -3,12 +3,12 @@
 page_title: "vpsie_dns_record Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  
+  Manages a single DNS record on a VPSie domain. Fully supported record types are A, AAAA, CNAME, TXT, and NS (the record is addressed by name, type, and content). Because the underlying API edits records a whole record set (name + type) at a time, avoid managing several records that share the same name and type unless each has distinct content; destroying multiple records of one set in a single run can race — use depends_on to serialize them.
 ---
 
 # vpsie_dns_record (Resource)
 
-
+Manages a single DNS record on a VPSie domain. Fully supported record types are `A`, `AAAA`, `CNAME`, `TXT`, and `NS` (the record is addressed by `name`, `type`, and `content`). Because the underlying API edits records a whole record set (name + type) at a time, avoid managing several records that share the same `name` and `type` unless each has distinct `content`; destroying multiple records of one set in a single run can race — use `depends_on` to serialize them.
 
 ## Example Usage
 
@@ -39,3 +39,15 @@ resource "vpsie_dns_record" "example" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# DNS records have no standalone id, so the import id is a composite of
+# "domain_identifier/type/name/content".
+terraform import vpsie_dns_record.example "3fa85f64-5717-4562-b3fc-2c963f66afa6/A/www/192.168.1.1"
+```

@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -14,8 +15,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &dnsRecordResource{}
-	_ resource.ResourceWithConfigure = &dnsRecordResource{}
+	_ resource.Resource                = &dnsRecordResource{}
+	_ resource.ResourceWithConfigure   = &dnsRecordResource{}
+	_ resource.ResourceWithImportState = &dnsRecordResource{}
 )
 
 type dnsRecordResource struct {
@@ -41,6 +43,12 @@ func (d *dnsRecordResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (d *dnsRecordResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "Manages a single DNS record on a VPSie domain. Fully supported record " +
+			"types are `A`, `AAAA`, `CNAME`, `TXT`, and `NS` (the record is addressed by " +
+			"`name`, `type`, and `content`). Because the underlying API edits records a whole " +
+			"record set (name + type) at a time, avoid managing several records that share the " +
+			"same `name` and `type` unless each has distinct `content`; destroying multiple " +
+			"records of one set in a single run can race — use `depends_on` to serialize them.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed: true,
@@ -138,9 +146,84 @@ func (d *dnsRecordResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	// DNS records don't have a dedicated Get API — state is maintained from Create/Update
+	// Individual DNS records have no id; they are read back from the parent
+	// domain, whose records are grouped by type and carry fully-qualified names.
+	domain, err := d.client.Domain.GetDomainByIdentifier(ctx, state.DomainIdentifier.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading DNS record",
+			"couldn't read parent domain: "+err.Error(),
+		)
+		return
+	}
+
+	// The parent domain is gone, so the record is too; drop it from state.
+	if domain == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	wantName := normalizeRecordName(state.Name.ValueString(), domain.Domain)
+	wantContent := strings.TrimSuffix(state.Content.ValueString(), ".")
+
+	// Collect the records sharing this record's (normalized) name and type —
+	// i.e. the rrset the managed record belongs to.
+	var rrset []govpsie.DomainRecord
+	for _, record := range domain.RecordsByType(state.Type.ValueString()) {
+		if strings.EqualFold(record.Name, wantName) {
+			rrset = append(rrset, record)
+		}
+	}
+
+	// The whole rrset is gone, so the managed record is too; drop it from state.
+	if len(rrset) == 0 {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	// Prefer an exact content match. The API normalizes/reshapes content for
+	// several record types (IPv6 compaction, TXT quote stripping, MX/CAA/SRV
+	// field splitting), so when the rrset holds a single record we adopt it even
+	// if its stored content differs; only when several records share the
+	// name+type do we rely on content to disambiguate.
+	var match *govpsie.DomainRecord
+	for i := range rrset {
+		if strings.TrimSuffix(rrset[i].Content, ".") == wantContent {
+			match = &rrset[i]
+			break
+		}
+	}
+	if match == nil && len(rrset) == 1 {
+		match = &rrset[0]
+	}
+
+	// Keep the config-owned values as the user wrote them (short name,
+	// un-normalized content) to avoid perpetual drift, and only refresh the
+	// server-computed TTL. When content can't be disambiguated in a multi-record
+	// rrset, leave state untouched rather than forcing a spurious recreate.
+	if match != nil {
+		state.TTL = types.Int64Value(int64(match.TTL))
+	}
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
+}
+
+// normalizeRecordName mirrors the cloud/api checkName logic: a short record name
+// is qualified with the domain, while "@"/"*" and already-qualified names are
+// mapped to their canonical form.
+func normalizeRecordName(name, domain string) string {
+	switch name {
+	case "@":
+		return domain
+	case "*":
+		return "*." + domain
+	}
+	lname := strings.ToLower(name)
+	ldomain := strings.ToLower(domain)
+	if lname == ldomain || strings.HasSuffix(lname, "."+ldomain) {
+		return name
+	}
+	return name + "." + domain
 }
 
 func (d *dnsRecordResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -224,4 +307,28 @@ func (d *dnsRecordResource) Delete(ctx context.Context, req resource.DeleteReque
 			"couldn't delete DNS record, unexpected error: "+err.Error(),
 		)
 	}
+}
+
+// ImportState imports a DNS record using the composite id
+// "domain_identifier/type/name/content" (a record has no standalone id, so all
+// four fields are needed to identify it uniquely). Read then refreshes the TTL.
+func (d *dnsRecordResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	parts := strings.SplitN(req.ID, "/", 4)
+	if len(parts) != 4 || parts[0] == "" || parts[1] == "" || parts[2] == "" || parts[3] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import id in the format \"domain_identifier/type/name/content\", got: %q", req.ID),
+		)
+		return
+	}
+
+	state := dnsRecordResourceModel{
+		DomainIdentifier: types.StringValue(parts[0]),
+		Type:             types.StringValue(parts[1]),
+		Name:             types.StringValue(parts[2]),
+		Content:          types.StringValue(parts[3]),
+		ID:               types.StringValue(fmt.Sprintf("%s/%s/%s", parts[0], parts[1], parts[2])),
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
