@@ -3,6 +3,7 @@ package vpc
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -34,7 +35,8 @@ type vpcResourceModel struct {
 	InterfaceNumber  types.Int64  `tfsdk:"interface_number"`
 	NetworkTagNumber types.Int64  `tfsdk:"network_tag_number"`
 	NetworkRange     types.String `tfsdk:"network_range"`
-	NetworkSize      types.Int64  `tfsdk:"network_size"`
+	NetworkSize      types.String `tfsdk:"network_size"`
+	AutoGenerate     types.Int64  `tfsdk:"auto_generate"`
 	IsDefault        types.Int64  `tfsdk:"is_default"`
 	CreatedBy        types.Int64  `tfsdk:"created_by"`
 	UpdatedBy        types.Int64  `tfsdk:"updated_by"`
@@ -244,7 +246,16 @@ func (v *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
-	err := v.client.VPC.CreateVpc(ctx, nil)
+	createReq := &govpsie.CreateVpcReq{
+		Name:         plan.Name.ValueString(),
+		Description:  plan.Description.ValueString(),
+		DcIdentifier: plan.DcIdentifier.ValueString(),
+		NetworkRange: plan.NetworkRange.ValueString(),
+		NetworkSize:  plan.NetworkSize.ValueString(),
+		AutoGenerate: int(plan.AutoGenerate.ValueInt64()),
+	}
+
+	err := v.client.VPC.CreateVpc(ctx, createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating VPC", err.Error())
 		return
@@ -257,7 +268,6 @@ func (v *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 
 	plan.ID = types.Int64Value(int64(vpc.ID))
-	plan.NetworkRange = types.StringValue(vpc.NetworkRange)
 	plan.CreatedOn = types.StringValue(vpc.CreatedOn.String())
 	plan.LastUpdated = types.StringValue(vpc.LastUpdated.String())
 	plan.Firstname = types.StringValue(vpc.Firstname)
@@ -265,20 +275,17 @@ func (v *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 	plan.Username = types.StringValue(vpc.Username)
 	plan.State = types.StringValue(vpc.State)
 	plan.DcName = types.StringValue(vpc.DcName)
-	plan.DcIdentifier = types.StringValue(vpc.DcIdentifier)
 	plan.UserID = types.Int64Value(int64(vpc.UserID))
 	plan.OwnerID = types.Int64Value(int64(vpc.OwnerID))
 	plan.DatacenterID = types.Int64Value(int64(vpc.DatacenterID))
 	plan.InterfaceNumber = types.Int64Value(int64(vpc.InterfaceNumber))
 	plan.NetworkTagNumber = types.Int64Value(int64(vpc.NetworkTagNumber))
-	plan.NetworkSize = types.Int64Value(int64(vpc.NetworkSize))
 	plan.LowIPNum = types.Int64Value(int64(vpc.LowIPNum))
 	plan.HightIPNum = types.Int64Value(int64(vpc.HightIPNum))
 	plan.IsUpcNetwork = types.Int64Value(int64(vpc.IsUpcNetwork))
 	plan.IsDefault = types.Int64Value(int64(vpc.IsDefault))
 	plan.CreatedBy = types.Int64Value(int64(vpc.CreatedBy))
 	plan.UpdatedBy = types.Int64Value(int64(vpc.UpdatedBy))
-	plan.Description = types.StringValue(vpc.Description)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -302,9 +309,6 @@ func (v *vpcResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 
-	state.Name = types.StringValue(vpc.Name)
-	state.Description = types.StringValue(vpc.Description)
-	state.NetworkRange = types.StringValue(vpc.NetworkRange)
 	state.CreatedOn = types.StringValue(vpc.CreatedOn.String())
 	state.LastUpdated = types.StringValue(vpc.LastUpdated.String())
 	state.Firstname = types.StringValue(vpc.Firstname)
@@ -312,20 +316,17 @@ func (v *vpcResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	state.Username = types.StringValue(vpc.Username)
 	state.State = types.StringValue(vpc.State)
 	state.DcName = types.StringValue(vpc.DcName)
-	state.DcIdentifier = types.StringValue(vpc.DcIdentifier)
 	state.UserID = types.Int64Value(int64(vpc.UserID))
 	state.OwnerID = types.Int64Value(int64(vpc.OwnerID))
 	state.DatacenterID = types.Int64Value(int64(vpc.DatacenterID))
 	state.InterfaceNumber = types.Int64Value(int64(vpc.InterfaceNumber))
 	state.NetworkTagNumber = types.Int64Value(int64(vpc.NetworkTagNumber))
-	state.NetworkSize = types.Int64Value(int64(vpc.NetworkSize))
 	state.LowIPNum = types.Int64Value(int64(vpc.LowIPNum))
 	state.HightIPNum = types.Int64Value(int64(vpc.HightIPNum))
 	state.IsUpcNetwork = types.Int64Value(int64(vpc.IsUpcNetwork))
 	state.IsDefault = types.Int64Value(int64(vpc.IsDefault))
 	state.CreatedBy = types.Int64Value(int64(vpc.CreatedBy))
 	state.UpdatedBy = types.Int64Value(int64(vpc.UpdatedBy))
-	state.Description = types.StringValue(vpc.Description)
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -362,6 +363,34 @@ func (v *vpcResource) ImportState(ctx context.Context, req resource.ImportStateR
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+// GetVpcByName resolves a just-created VPC by name. Creation is asynchronous, so
+// it polls with a bounded, context-aware backoff until the VPC appears.
 func (v *vpcResource) GetVpcByName(ctx context.Context, name string) (*govpsie.VPC, error) {
-	return nil, nil
+	const attempts = 12
+	var lastErr error
+
+	for attempt := 0; attempt < attempts; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(5 * time.Second):
+			}
+		}
+
+		vpcs, err := v.client.VPC.List(ctx, &govpsie.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range vpcs {
+			if vpcs[i].Name == name {
+				return &vpcs[i], nil
+			}
+		}
+
+		lastErr = fmt.Errorf("vpc %q not found", name)
+	}
+
+	return nil, lastErr
 }
