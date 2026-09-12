@@ -3,25 +3,37 @@
 page_title: "vpsie_monitoring_rule Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  
+  Manages a VPSie monitoring rule: one or more metric conditions, each with alert actions, optionally attached to VMs. Changing the metrics or their actions replaces the rule; status and vms are updated in place.
+  The API rejects some rule/action combinations (surfaced as an error on apply): the same metric_type+condition may not repeat across rule blocks, a single rule may not combine power_off and reboot actions, and actions within a rule must be distinct.
 ---
 
 # vpsie_monitoring_rule (Resource)
 
+Manages a VPSie monitoring rule: one or more metric conditions, each with alert actions, optionally attached to VMs. Changing the metrics or their actions replaces the rule; `status` and `vms` are updated in place.
 
+The API rejects some rule/action combinations (surfaced as an error on apply): the same `metric_type`+`condition` may not repeat across rule blocks, a single rule may not combine `power_off` and `reboot` actions, and actions within a rule must be distinct.
 
 ## Example Usage
 
 ```terraform
 resource "vpsie_monitoring_rule" "example" {
-  rule_name      = "high-cpu-alert"
-  metric_type    = "cpu"
-  condition      = "above"
-  threshold_type = "percent"
-  threshold      = "80"
-  period         = "5m"
-  frequency      = "1m"
-  email          = "admin@example.com"
+  rule_name = "high-cpu-alert"
+  frequency = "1"
+  status    = "1"
+
+  rule {
+    metric_type    = "cpu"
+    condition      = "greater_than"
+    threshold      = "80"
+    threshold_type = "percentage"
+    period         = "5"
+
+    action {
+      action_name = "send_alert"
+      action_key  = "send_alert"
+      email       = "admin@example.com"
+    }
+  }
 }
 ```
 
@@ -30,24 +42,56 @@ resource "vpsie_monitoring_rule" "example" {
 
 ### Required
 
-- `condition` (String)
-- `email` (String)
-- `frequency` (String)
-- `metric_type` (String)
-- `period` (String)
+- `frequency` (String) How often (in minutes) the rule is evaluated.
 - `rule_name` (String)
-- `threshold` (String)
-- `threshold_type` (String)
 
 ### Optional
 
-- `action_key` (String)
-- `action_name` (String)
-- `status` (String)
-- `threshold_id` (String)
-- `vms` (List of String)
+- `rule` (Block List) A metric condition to evaluate. Changing any rule replaces the resource. (see [below for nested schema](#nestedblock--rule))
+- `status` (String) Rule status: `1` (enabled) or `0` (disabled).
+- `vms` (List of String) Identifiers of VMs the rule applies to.
 
 ### Read-Only
 
 - `created_on` (String)
 - `identifier` (String)
+
+<a id="nestedblock--rule"></a>
+### Nested Schema for `rule`
+
+Required:
+
+- `condition` (String) `greater_than` or `less_than`.
+- `metric_type` (String) One of cpu, ram, disk_percentage, disk_read, disk_write, net_in, net_out.
+- `period` (String) Sustained period, in minutes, before the rule triggers.
+- `threshold` (String)
+- `threshold_type` (String) `percentage` or `mbps`.
+
+Optional:
+
+- `action` (Block List) An action to take when the condition is met. (see [below for nested schema](#nestedblock--rule--action))
+- `status` (String) Metric status: `1` (enabled) or `0` (disabled); defaults to `1`. Set it explicitly when importing a disabled metric, otherwise the default plans a replacement.
+
+<a id="nestedblock--rule--action"></a>
+### Nested Schema for `rule.action`
+
+Required:
+
+- `action_key` (String) `send_alert`, `reboot`, `power_off`, `cpu`, `ram`, or `ssd`.
+- `action_name` (String) `send_alert`, `power_controls`, or `auto_scale`.
+- `email` (String) Alert recipient email. Required: the API rejects an action with no email.
+
+Optional:
+
+- `value` (String) Adjustment value for auto_scale actions (e.g. `+2`).
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Monitoring rules are imported by their UUID identifier.
+terraform import vpsie_monitoring_rule.example "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+```

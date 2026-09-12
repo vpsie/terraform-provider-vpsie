@@ -15,23 +15,35 @@ type monitoringRuleDataSource struct {
 }
 
 type monitoringRuleDataSourceModel struct {
-	ID    types.String          `tfsdk:"id"`
-	Rules []monitoringRuleModel `tfsdk:"rules"`
+	ID    types.String           `tfsdk:"id"`
+	Rules []monitoringRuleDSItem `tfsdk:"rules"`
 }
 
-type monitoringRuleModel struct {
-	Identifier    types.String `tfsdk:"identifier"`
-	RuleName      types.String `tfsdk:"rule_name"`
-	MetricType    types.String `tfsdk:"metric_type"`
-	Condition     types.String `tfsdk:"condition"`
-	ThresholdType types.String `tfsdk:"threshold_type"`
-	Threshold     types.Int64  `tfsdk:"threshold"`
-	Period        types.Int64  `tfsdk:"period"`
-	Frequency     types.Int64  `tfsdk:"frequency"`
-	Status        types.Int64  `tfsdk:"status"`
-	Email         types.String `tfsdk:"email"`
-	CreatedOn     types.String `tfsdk:"created_on"`
-	CreatedBy     types.String `tfsdk:"created_by"`
+type monitoringRuleDSItem struct {
+	Identifier types.String         `tfsdk:"identifier"`
+	RuleName   types.String         `tfsdk:"rule_name"`
+	Status     types.Int64          `tfsdk:"status"`
+	Frequency  types.Int64          `tfsdk:"frequency"`
+	CreatedOn  types.String         `tfsdk:"created_on"`
+	CreatedBy  types.String         `tfsdk:"created_by"`
+	Metrics    []monitoringMetricDS `tfsdk:"metrics"`
+}
+
+type monitoringMetricDS struct {
+	MetricType    types.String         `tfsdk:"metric_type"`
+	Condition     types.String         `tfsdk:"condition"`
+	Threshold     types.Int64          `tfsdk:"threshold"`
+	ThresholdType types.String         `tfsdk:"threshold_type"`
+	Period        types.Int64          `tfsdk:"period"`
+	Status        types.Int64          `tfsdk:"status"`
+	Actions       []monitoringActionDS `tfsdk:"actions"`
+}
+
+type monitoringActionDS struct {
+	ActionName types.String `tfsdk:"action_name"`
+	ActionKey  types.String `tfsdk:"action_key"`
+	Email      types.String `tfsdk:"email"`
+	Value      types.String `tfsdk:"value"`
 }
 
 func NewMonitoringRuleDataSource() datasource.DataSource {
@@ -45,25 +57,41 @@ func (d *monitoringRuleDataSource) Metadata(_ context.Context, req datasource.Me
 func (d *monitoringRuleDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed: true,
-			},
+			"id": schema.StringAttribute{Computed: true},
 			"rules": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"identifier":     schema.StringAttribute{Computed: true},
-						"rule_name":      schema.StringAttribute{Computed: true},
-						"metric_type":    schema.StringAttribute{Computed: true},
-						"condition":      schema.StringAttribute{Computed: true},
-						"threshold_type": schema.StringAttribute{Computed: true},
-						"threshold":      schema.Int64Attribute{Computed: true},
-						"period":         schema.Int64Attribute{Computed: true},
-						"frequency":      schema.Int64Attribute{Computed: true},
-						"status":         schema.Int64Attribute{Computed: true},
-						"email":          schema.StringAttribute{Computed: true},
-						"created_on":     schema.StringAttribute{Computed: true},
-						"created_by":     schema.StringAttribute{Computed: true},
+						"identifier": schema.StringAttribute{Computed: true},
+						"rule_name":  schema.StringAttribute{Computed: true},
+						"status":     schema.Int64Attribute{Computed: true},
+						"frequency":  schema.Int64Attribute{Computed: true},
+						"created_on": schema.StringAttribute{Computed: true},
+						"created_by": schema.StringAttribute{Computed: true},
+						"metrics": schema.ListNestedAttribute{
+							Computed: true,
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"metric_type":    schema.StringAttribute{Computed: true},
+									"condition":      schema.StringAttribute{Computed: true},
+									"threshold":      schema.Int64Attribute{Computed: true},
+									"threshold_type": schema.StringAttribute{Computed: true},
+									"period":         schema.Int64Attribute{Computed: true},
+									"status":         schema.Int64Attribute{Computed: true},
+									"actions": schema.ListNestedAttribute{
+										Computed: true,
+										NestedObject: schema.NestedAttributeObject{
+											Attributes: map[string]schema.Attribute{
+												"action_name": schema.StringAttribute{Computed: true},
+												"action_key":  schema.StringAttribute{Computed: true},
+												"email":       schema.StringAttribute{Computed: true},
+												"value":       schema.StringAttribute{Computed: true},
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -101,20 +129,34 @@ func (d *monitoringRuleDataSource) Read(ctx context.Context, req datasource.Read
 	}
 
 	for _, r := range rules {
-		state.Rules = append(state.Rules, monitoringRuleModel{
-			Identifier:    types.StringValue(r.Identifier),
-			RuleName:      types.StringValue(r.RuleName),
-			MetricType:    types.StringValue(r.MetricType),
-			Condition:     types.StringValue(r.Condition),
-			ThresholdType: types.StringValue(r.ThresholdType),
-			Threshold:     types.Int64Value(int64(r.Threshold)),
-			Period:        types.Int64Value(int64(r.Period)),
-			Frequency:     types.Int64Value(int64(r.Frequency)),
-			Status:        types.Int64Value(int64(r.Status)),
-			Email:         types.StringValue(r.Email),
-			CreatedOn:     types.StringValue(r.CreatedOn),
-			CreatedBy:     types.StringValue(r.CreatedBY),
-		})
+		item := monitoringRuleDSItem{
+			Identifier: types.StringValue(r.Identifier),
+			RuleName:   types.StringValue(r.RuleName),
+			Status:     types.Int64Value(int64(r.Status)),
+			Frequency:  types.Int64Value(int64(r.Frequency)),
+			CreatedOn:  types.StringValue(r.CreatedOn),
+			CreatedBy:  types.StringValue(r.CreatedBy),
+		}
+		for _, m := range r.Metrics {
+			metric := monitoringMetricDS{
+				MetricType:    types.StringValue(m.MetricType),
+				Condition:     types.StringValue(m.Condition),
+				Threshold:     types.Int64Value(int64(m.Threshold)),
+				ThresholdType: types.StringValue(m.ThresholdType),
+				Period:        types.Int64Value(int64(m.Period)),
+				Status:        types.Int64Value(int64(m.Status)),
+			}
+			for _, a := range m.Actions {
+				metric.Actions = append(metric.Actions, monitoringActionDS{
+					ActionName: types.StringValue(a.ActionName),
+					ActionKey:  types.StringValue(a.ActionKey),
+					Email:      types.StringValue(a.Email),
+					Value:      types.StringValue(a.Value),
+				})
+			}
+			item.Metrics = append(item.Metrics, metric)
+		}
+		state.Rules = append(state.Rules, item)
 	}
 
 	state.ID = types.StringValue("monitoring_rules")

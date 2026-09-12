@@ -29,15 +29,33 @@ data "vpsie_monitoring_rules" "example" {}
 
 Read-Only:
 
-- `condition` (String)
 - `created_by` (String)
 - `created_on` (String)
-- `email` (String)
 - `frequency` (Number)
 - `identifier` (String)
+- `metrics` (Attributes List) (see [below for nested schema](#nestedatt--rules--metrics))
+- `rule_name` (String)
+- `status` (Number)
+
+<a id="nestedatt--rules--metrics"></a>
+### Nested Schema for `rules.metrics`
+
+Read-Only:
+
+- `actions` (Attributes List) (see [below for nested schema](#nestedatt--rules--metrics--actions))
+- `condition` (String)
 - `metric_type` (String)
 - `period` (Number)
-- `rule_name` (String)
 - `status` (Number)
 - `threshold` (Number)
 - `threshold_type` (String)
+
+<a id="nestedatt--rules--metrics--actions"></a>
+### Nested Schema for `rules.metrics.actions`
+
+Read-Only:
+
+- `action_key` (String)
+- `action_name` (String)
+- `email` (String)
+- `value` (String)

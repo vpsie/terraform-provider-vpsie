@@ -16,6 +16,12 @@ FEATURES:
 
 BUG FIXES:
 
+- **`vpsie_monitoring_rule`:** reworked to the API's actual shape. The resource
+  sent a stale flat body (single metric, single action) the backend no longer
+  accepts; it now takes one or more `rule` blocks, each with its own `action`
+  blocks, plus `vms`. Reads, status toggling, VM attach/detach, delete and import
+  all work, and the `vpsie_monitoring_rules` data source now returns each rule's
+  metrics and actions.
 - **`vpsie_firewall`:** the resource was non-functional — its schema and model
   were misaligned (a value-conversion crash), rules were marked read-only so they
   could never be set, and delete failed with HTTP 500 because the required
