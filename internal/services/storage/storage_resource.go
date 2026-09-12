@@ -199,7 +199,7 @@ func (s *storageResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	var storageReq *govpsie.StorageCreateRequest = &govpsie.StorageCreateRequest{}
+	storageReq := &govpsie.StorageCreateRequest{}
 
 	storageReq.Name = plan.Name.ValueString()
 	storageReq.Size = int(plan.Size.ValueInt64())

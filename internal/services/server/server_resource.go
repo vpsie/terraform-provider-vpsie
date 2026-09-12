@@ -641,7 +641,7 @@ func (s *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	var createServerReq *govpsie.CreateServerRequest = &govpsie.CreateServerRequest{}
+	createServerReq := &govpsie.CreateServerRequest{}
 	createServerReq.Tags = []*string{}
 
 	createServerReq.AddPrivateIp = plan.AddPrivateIp.ValueInt64Pointer()

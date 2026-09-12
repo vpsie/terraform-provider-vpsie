@@ -131,7 +131,7 @@ func (s *scriptResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	var createScript *govpsie.CreateScriptRequest = &govpsie.CreateScriptRequest{
+	createScript := &govpsie.CreateScriptRequest{
 		Name:          plan.ScriptName.ValueString(),
 		ScriptContent: plan.Script.ValueString(),
 		ScriptType:    plan.Type.ValueString(),
@@ -217,7 +217,7 @@ func (s *scriptResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	var updateScript *govpsie.ScriptUpdateRequest = &govpsie.ScriptUpdateRequest{
+	updateScript := &govpsie.ScriptUpdateRequest{
 		Name:             plan.ScriptName.ValueString(),
 		ScriptContent:    plan.Script.ValueString(),
 		ScriptType:       plan.Type.ValueString(),
