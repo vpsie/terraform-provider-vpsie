@@ -818,6 +818,13 @@ func (s *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
+	// The server was deleted out-of-band (e.g. via the console): drop it from
+	// state so Terraform can plan a clean recreate instead of crashing.
+	if server == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
 	// Overwrite items with refreshed state
 	state.ID = types.Int64Value(server.ID)
 	state.Identifier = types.StringValue(server.Identifier)

@@ -205,6 +205,14 @@ func (m *managedDBResource) Create(ctx context.Context, req resource.CreateReque
 
 		return
 	}
+	if details == nil {
+		resp.Diagnostics.AddError(
+			"Error creating managed database",
+			"managed database created but its details were not found for identifier "+summary.Identifier,
+		)
+
+		return
+	}
 
 	applyManagedDBDetails(&plan, details)
 
@@ -318,6 +326,14 @@ func (m *managedDBResource) Update(ctx context.Context, req resource.UpdateReque
 		resp.Diagnostics.AddError(
 			"Error scaling managed database",
 			"managed database scaled but couldn't read its details: "+err.Error(),
+		)
+
+		return
+	}
+	if details == nil {
+		resp.Diagnostics.AddError(
+			"Error scaling managed database",
+			"managed database scaled but its details were not found for identifier "+identifier,
 		)
 
 		return
