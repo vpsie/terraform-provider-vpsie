@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/vpsie/govpsie"
 )
 
@@ -46,6 +47,7 @@ type kubernetesGroupResourceModel struct {
 	NodesCount        types.Int64  `tfsdk:"nodes_count"`
 	DcIdentifier      types.String `tfsdk:"dc_identifier"`
 	ClusterIdentifier types.String `tfsdk:"cluster_identifier"`
+	KubeSizeID        types.Int64  `tfsdk:"kube_size_id"`
 }
 
 // NewKubernetesGroupDataSource is a helper function to create the data source.
@@ -61,12 +63,6 @@ func (k *kubernetesGroupResource) Metadata(_ context.Context, req resource.Metad
 func (k *kubernetesGroupResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"cluster_name": schema.StringAttribute{
-				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
 			"identifier": schema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -80,9 +76,10 @@ func (k *kubernetesGroupResource) Schema(ctx context.Context, _ resource.SchemaR
 				},
 			},
 			"group_name": schema.StringAttribute{
-				Computed: true,
+				MarkdownDescription: "Name of the node group. Changing it forces a new group.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"user_id": schema.Int64Attribute{
@@ -188,7 +185,19 @@ func (k *kubernetesGroupResource) Schema(ctx context.Context, _ resource.SchemaR
 				},
 			},
 			"cluster_identifier": schema.StringAttribute{
+				MarkdownDescription: "Identifier of the cluster the group belongs to. Changing it forces a new group.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"kube_size_id": schema.Int64Attribute{
+				MarkdownDescription: "Numeric id of the node size for this group, as reported by the " +
+					"Kubernetes offers endpoint. Changing it forces a new group.",
 				Required: true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+				},
 			},
 		},
 	}
@@ -225,7 +234,7 @@ func (k *kubernetesGroupResource) Create(ctx context.Context, req resource.Creat
 	createReq := govpsie.CreateK8sGroupReq{
 		ClusterIdentifier: plan.ClusterIdentifier.ValueString(),
 		GroupName:         plan.GroupName.ValueString(),
-		KubeSizeID:        2,
+		KubeSizeID:        int(plan.KubeSizeID.ValueInt64()),
 	}
 
 	err := k.client.K8s.CreateK8sGroup(ctx, &createReq)
@@ -261,6 +270,9 @@ func (k *kubernetesGroupResource) Create(ctx context.Context, req resource.Creat
 	plan.NodesCount = types.Int64Value(k8sGroup.NodesCount)
 	plan.DcIdentifier = types.StringValue(k8sGroup.DcIdentifier)
 
+	// Without this the framework reports "Missing Resource State After Create"
+	// and the group is created but never tracked.
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
 // Read refreshes the Terraform state with the latest data.

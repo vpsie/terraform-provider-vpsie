@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/vpsie/govpsie"
 )
 
@@ -624,6 +625,22 @@ func (l *loadbalancerResource) Create(ctx context.Context, req resource.CreateRe
 		InputTags:          tags,
 	}
 
+	// Record which load balancers already exist so the newly created one can be
+	// told apart from them. The create endpoint returns no identifier, so it has
+	// to be recovered by name -- and a delete is applied asynchronously, so a
+	// load balancer of the same name that is still being torn down can linger in
+	// the listing. Without this the provider adopts the dying one.
+	existing, err := l.client.LB.ListLBs(ctx, nil)
+	if err != nil {
+		resp.Diagnostics.AddError("Error listing load balancers before create", err.Error())
+		return
+	}
+
+	preexisting := make(map[string]struct{}, len(existing))
+	for _, lb := range existing {
+		preexisting[lb.Identifier] = struct{}{}
+	}
+
 	if err := l.client.LB.CreateLB(ctx, createReq); err != nil {
 		resp.Diagnostics.AddError("Error creating load balancer", err.Error())
 		return
@@ -644,17 +661,21 @@ func (l *loadbalancerResource) Create(ctx context.Context, req resource.CreateRe
 	delay := 5 * time.Second
 	const maxDelay = 30 * time.Second
 	for {
-		lb, ready, err := l.checkResourceStatus(ctx, plan.LBName.ValueString())
+		lb, ready, err := l.checkResourceStatus(ctx, plan.LBName.ValueString(), preexisting)
 		if err != nil {
 			resp.Diagnostics.AddError("Error checking load balancer status", err.Error())
 			return
 		}
 
 		if ready {
-			// The create endpoint accepts `rules` but does not reliably persist
-			// them -- a rule whose backends name a VM is silently dropped, so a
-			// load balancer can come up with no listeners at all. Reconcile by
-			// adding whatever the API is missing.
+			// The create endpoint accepts `rules` but persists them
+			// asynchronously, and sometimes not at all -- a rule whose backends
+			// name a VM can be dropped silently, leaving a load balancer with no
+			// listeners. Let the listeners settle first, then add only what is
+			// genuinely missing; reconciling too early duplicates a listener
+			// that was merely still being written.
+			lb = l.waitForRules(ctx, lb, len(plan.Rules))
+
 			if err := l.reconcileRules(ctx, lb, plan.Rules); err != nil {
 				resp.Diagnostics.AddError("Error creating load balancer rules", err.Error())
 				return
@@ -841,7 +862,7 @@ func (l *loadbalancerResource) ImportState(ctx context.Context, req resource.Imp
 // checkResourceStatus looks the load balancer up by name and reports whether it
 // has finished provisioning. The create endpoint returns no identifier, so this
 // is the only way to recover the newly created load balancer.
-func (l *loadbalancerResource) checkResourceStatus(ctx context.Context, lbName string) (*govpsie.LBDetails, bool, error) {
+func (l *loadbalancerResource) checkResourceStatus(ctx context.Context, lbName string, skip map[string]struct{}) (*govpsie.LBDetails, bool, error) {
 	lbs, err := l.client.LB.ListLBs(ctx, nil)
 	if err != nil {
 		return nil, false, err
@@ -849,6 +870,11 @@ func (l *loadbalancerResource) checkResourceStatus(ctx context.Context, lbName s
 
 	for _, lb := range lbs {
 		if lb.LBName != lbName {
+			continue
+		}
+
+		// Ignore load balancers that already existed before this create.
+		if _, seen := skip[lb.Identifier]; seen {
 			continue
 		}
 
@@ -1038,4 +1064,33 @@ func backendsFromAPI(apiBackends []govpsie.LBBackendsDetail) []lbBackendModel {
 		})
 	}
 	return backends
+}
+
+// waitForRules re-reads the load balancer until it reports at least `want`
+// listeners, or a short grace period passes. It always returns a usable value:
+// on any error or timeout the most recent successful read is returned, leaving
+// reconcileRules to add whatever is still missing.
+func (l *loadbalancerResource) waitForRules(ctx context.Context, lb *govpsie.LBDetails, want int) *govpsie.LBDetails {
+	const maxAttempts = 12
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if len(lb.Rules) >= want {
+			return lb
+		}
+
+		select {
+		case <-ctx.Done():
+			return lb
+		case <-time.After(5 * time.Second):
+		}
+
+		refreshed, err := l.client.LB.GetLB(ctx, lb.Identifier)
+		if err != nil || refreshed == nil || refreshed.Identifier == "" {
+			return lb
+		}
+
+		lb = refreshed
+	}
+
+	return lb
 }

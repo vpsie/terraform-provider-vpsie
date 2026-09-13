@@ -27,9 +27,9 @@ type gatewaysModel struct {
 	IP                   types.String `tfsdk:"ip"`
 	IsReserved           types.Int64  `tfsdk:"is_reserved"`
 	IPVersion            types.String `tfsdk:"ip_version"`
-	BoxID                types.Int64  `tfsdk:"box_id,omitempty"`
+	BoxID                types.Int64  `tfsdk:"box_id"`
 	IsPrimary            types.Int64  `tfsdk:"is_primary"`
-	Notes                types.String `tfsdk:"notes,omitempty"`
+	Notes                types.String `tfsdk:"notes"`
 	UserID               types.Int64  `tfsdk:"user_id"`
 	UpdatedAt            types.String `tfsdk:"updated_at"`
 	IsGatewayReserved    types.Int64  `tfsdk:"is_gateway_reserved"`

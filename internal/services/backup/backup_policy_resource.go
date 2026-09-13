@@ -3,6 +3,7 @@ package backup
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/vpsie/govpsie"
 )
 
@@ -72,10 +74,9 @@ func (b *backupPolicyResource) Schema(_ context.Context, _ resource.SchemaReques
 				},
 			},
 			"keep": schema.StringAttribute{
+				MarkdownDescription: "How many backups to retain (maximum 5). Updated in place; " +
+					"changing it does not detach the policy from its servers.",
 				Required: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
 			},
 			"vms": schema.ListAttribute{
 				Optional:    true,
@@ -269,6 +270,26 @@ func (b *backupPolicyResource) Update(ctx context.Context, req resource.UpdateRe
 			resp.Diagnostics.AddError("Error attaching VMs to backup policy", err.Error())
 			return
 		}
+	}
+
+	// Retention is updatable in place. Replacing the policy instead would
+	// detach it from every server it protects, silently dropping coverage.
+	if !plan.Keep.Equal(state.Keep) {
+		keep, err := strconv.ParseInt(plan.Keep.ValueString(), 10, 64)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Invalid keep value",
+				fmt.Sprintf("keep must be a whole number, got %q: %s", plan.Keep.ValueString(), err),
+			)
+			return
+		}
+
+		if err := b.client.Backup.ManageRetainBackupPolicy(ctx, state.Identifier.ValueString(), int(keep)); err != nil {
+			resp.Diagnostics.AddError("Error updating policy retention", err.Error())
+			return
+		}
+
+		state.Keep = plan.Keep
 	}
 
 	// Detach removed VMs

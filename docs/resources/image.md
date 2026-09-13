@@ -25,9 +25,9 @@ resource "vpsie_image" "example" {
 
 ### Required
 
-- `dc_identifier` (String)
-- `fetched_from_url` (String)
-- `image_label` (String)
+- `dc_identifier` (String) Identifier of the datacenter to import the image into. A custom image is fetched once, so changing this forces a new image.
+- `fetched_from_url` (String) URL the image is fetched from. A custom image is fetched once, so changing this forces a new image.
+- `image_label` (String) Label for the custom image. A custom image is fetched once, so changing this forces a new image.
 
 ### Optional
 

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/vpsie/govpsie"
 )
 
@@ -68,7 +69,12 @@ func (i *projectResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"name": schema.StringAttribute{
+				MarkdownDescription: "The project name. The API has no project-update endpoint, " +
+					"so changing this replaces the project.",
 				Required: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"updated_at": schema.StringAttribute{
 				Computed: true,
@@ -77,8 +83,12 @@ func (i *projectResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "The project description. Required by the API; must not be empty.",
-				Required:            true,
+				MarkdownDescription: "The project description. Required by the API; must not be empty. " +
+					"The API has no project-update endpoint, so changing this replaces the project.",
+				Required: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"created_on": schema.StringAttribute{
 				Computed: true,
@@ -197,13 +207,14 @@ func (p *projectResource) Read(ctx context.Context, req resource.ReadRequest, re
 }
 
 // Update updates the resource and sets the updated Terraform state on success.
+// Update is never called: every configurable attribute is RequiresReplace,
+// because the API exposes no endpoint that updates a project in place.
 func (i *projectResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var state projectResourceModel
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	resp.Diagnostics.AddError(
+		"Project update is not supported",
+		"The VPSIE API has no endpoint for updating a project, so every attribute forces replacement. "+
+			"Reaching this point means the schema and this method have drifted apart; please report it.",
+	)
 }
 
 // Delete deletes the resource and removes the Terraform state on success.

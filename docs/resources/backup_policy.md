@@ -27,7 +27,7 @@ resource "vpsie_backup_policy" "example" {
 ### Required
 
 - `backup_plan` (String)
-- `keep` (String)
+- `keep` (String) How many backups to retain (maximum 5). Updated in place; changing it does not detach the policy from its servers.
 - `name` (String)
 - `plan_every` (String)
 

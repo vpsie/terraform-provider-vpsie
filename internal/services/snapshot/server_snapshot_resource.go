@@ -3,6 +3,7 @@ package snapshot
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/vpsie/govpsie"
 )
 
@@ -241,7 +243,11 @@ func (s *serverSnapshotResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	snapshot, err := s.GetSnapshotByName(ctx, plan.Name.ValueString())
+	// The create endpoint returns no identifier and the snapshot is taken
+	// asynchronously, so the new snapshot has to be recovered by name -- and it
+	// is not listed the instant create returns. Poll rather than failing on the
+	// first miss, which would leave an untracked snapshot behind.
+	snapshot, err := s.waitForSnapshotByName(ctx, plan.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating vpsie server snapshots",
@@ -393,4 +399,27 @@ func (s *serverSnapshotResource) GetSnapshotByName(ctx context.Context, snapshot
 	}
 
 	return nil, fmt.Errorf("snapshot with name %s not found", snapshotName)
+}
+
+// waitForSnapshotByName polls the snapshot listing until the named snapshot
+// appears, or the context deadline passes.
+func (s *serverSnapshotResource) waitForSnapshotByName(ctx context.Context, name string) (*govpsie.Snapshot, error) {
+	const maxAttempts = 30
+
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		snapshot, err := s.GetSnapshotByName(ctx, name)
+		if err == nil {
+			return snapshot, nil
+		}
+		lastErr = err
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(10 * time.Second):
+		}
+	}
+
+	return nil, fmt.Errorf("timed out waiting for snapshot %q to appear; it may still be in progress: %w", name, lastErr)
 }

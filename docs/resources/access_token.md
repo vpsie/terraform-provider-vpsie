@@ -29,6 +29,10 @@ resource "vpsie_access_token" "example" {
 - `expiration_date` (String)
 - `name` (String)
 
+### Optional
+
+- `status` (String) Whether the token is active. `1` for active, `0` for disabled. The API requires it; defaults to `1`.
+
 ### Read-Only
 
 - `created_on` (String)

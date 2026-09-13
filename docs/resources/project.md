@@ -24,8 +24,8 @@ resource "vpsie_project" "example" {
 
 ### Required
 
-- `description` (String) The project description. Required by the API; must not be empty.
-- `name` (String)
+- `description` (String) The project description. Required by the API; must not be empty. The API has no project-update endpoint, so changing this replaces the project.
+- `name` (String) The project name. The API has no project-update endpoint, so changing this replaces the project.
 
 ### Read-Only
 

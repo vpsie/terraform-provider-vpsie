@@ -25,9 +25,9 @@ resource "vpsie_storage_attachement" "example" {
 
 ### Required
 
-- `storage_identifier` (String)
-- `vm_identifier` (String)
+- `storage_identifier` (String) Identifier of the storage volume. Changing it forces a new attachment.
+- `vm_identifier` (String) Identifier of the server to attach the volume to. Changing it detaches and re-attaches the volume, so it forces a new attachment.
 
 ### Optional
 
-- `vm_type` (String)
+- `vm_type` (String) Type of target the volume attaches to. Changing it forces a new attachment.

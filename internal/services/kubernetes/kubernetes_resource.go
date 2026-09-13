@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -13,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/vpsie/govpsie"
 )
 
@@ -39,7 +42,7 @@ type kubernetesResourceModel struct {
 	Traffic     types.Int64   `tfsdk:"traffic"`
 	Color       types.String  `tfsdk:"color"`
 	Price       types.Float64 `tfsdk:"price"`
-	Nodes       []Node        `tfsdk:"nodes"`
+	Nodes       types.List    `tfsdk:"nodes"`
 
 	DcIdentifier       types.String   `tfsdk:"dc_identifier"`
 	ResourceIdentifier types.String   `tfsdk:"resource_identifier"`
@@ -47,8 +50,24 @@ type kubernetesResourceModel struct {
 	SlaveCount         types.Int64    `tfsdk:"slave_count"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 	VpcId              types.Int64    `tfsdk:"vpc_id"`
-	KuberVer           types.Int64    `tfsdk:"kuber_ver"`
+	KuberVer           types.String   `tfsdk:"kuber_ver"`
 	ProjectIdentifier  types.String   `tfsdk:"project_identifier"`
+}
+
+// nodeAttrTypes mirrors the `nodes` nested object, used to build the
+// types.List the framework requires for a computed nested collection.
+func nodeAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"id":            types.Int64Type,
+		"user_id":       types.Int64Type,
+		"hostname":      types.StringType,
+		"default_ip":    types.StringType,
+		"private_ip":    types.StringType,
+		"node_type":     types.Int64Type,
+		"node_id":       types.Int64Type,
+		"datacenter_id": types.Int64Type,
+		"created_on":    types.StringType,
+	}
 }
 
 type Node struct {
@@ -80,14 +99,16 @@ func (k *kubernetesResource) Schema(ctx context.Context, _ resource.SchemaReques
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"id": schema.Int64Attribute{
-				Computed: true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
+			"cluster_name": schema.StringAttribute{
+				MarkdownDescription: "Name of the cluster. Changing it forces a new cluster.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"cluster_name": schema.StringAttribute{
-				Computed: true,
+			"color": schema.StringAttribute{
+				MarkdownDescription: "Display colour reported for the cluster's offer.",
+				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -209,36 +230,53 @@ func (k *kubernetesResource) Schema(ctx context.Context, _ resource.SchemaReques
 			}),
 
 			"dc_identifier": schema.StringAttribute{
-				Computed: true,
+				MarkdownDescription: "Identifier of the datacenter to deploy the cluster into. Changing it forces a new cluster.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"resource_identifier": schema.StringAttribute{
-				Computed: true,
+				MarkdownDescription: "Identifier of the offer backing each node. This is the offer's datacenter-mapping identifier. Changing it forces a new cluster.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"project_identifier": schema.StringAttribute{
-				Computed: true,
+				MarkdownDescription: "Identifier of the project that will own the cluster. Changing it forces a new cluster.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"manager_count": schema.Int64Attribute{
-				Computed: true,
+				MarkdownDescription: "Number of control-plane nodes. Changing it forces a new cluster.",
+				Required:            true,
 				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
+					int64planmodifier.RequiresReplace(),
 				},
 			},
 			"slave_count": schema.Int64Attribute{
-				Optional: true,
+				MarkdownDescription: "Number of worker nodes. Changing it forces a new cluster.",
+				Required:            true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+				},
+			},
+			"kuber_ver": schema.StringAttribute{
+				MarkdownDescription: "Kubernetes version to deploy, as reported by the versions " +
+					"endpoint (for example `1.34.1`). Changing it forces a new cluster.",
+				Required: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"vpc_id": schema.Int64Attribute{
-				Computed: true,
+				MarkdownDescription: "Numeric id of the VPC the cluster is attached to. Changing it forces a new cluster.",
+				Required:            true,
 				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
+					int64planmodifier.RequiresReplace(),
 				},
 			},
 		},
@@ -278,7 +316,7 @@ func (k *kubernetesResource) Create(ctx context.Context, req resource.CreateRequ
 		NodesCountMaster:   int(plan.ManagerCount.ValueInt64()),
 		NodesCountSlave:    int(plan.SlaveCount.ValueInt64()),
 		VpcId:              int(plan.VpcId.ValueInt64()),
-		KuberVer:           int(plan.KuberVer.ValueInt64()),
+		KuberVer:           plan.KuberVer.ValueString(),
 		ResourceIdentifier: plan.ResourceIdentifier.ValueString(),
 		ProjectIdentifier:  plan.ProjectIdentifier.ValueString(),
 	}
@@ -343,7 +381,12 @@ func (k *kubernetesResource) Create(ctx context.Context, req resource.CreateRequ
 					CreatedOn:    types.StringValue(node.CreatedOn),
 				})
 			}
-			plan.Nodes = nodes
+			nodeList, nodeDiags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: nodeAttrTypes()}, nodes)
+			resp.Diagnostics.Append(nodeDiags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			plan.Nodes = nodeList
 
 			diags = resp.State.Set(ctx, plan)
 			resp.Diagnostics.Append(diags...)
@@ -411,7 +454,12 @@ func (k *kubernetesResource) Read(ctx context.Context, req resource.ReadRequest,
 			CreatedOn:    types.StringValue(node.CreatedOn),
 		})
 	}
-	state.Nodes = nodes
+	nodeList, nodeDiags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: nodeAttrTypes()}, nodes)
+	resp.Diagnostics.Append(nodeDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.Nodes = nodeList
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)

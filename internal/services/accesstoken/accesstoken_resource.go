@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/vpsie/govpsie"
 )
 
@@ -26,6 +31,7 @@ type accessTokenResourceModel struct {
 	Name           types.String `tfsdk:"name"`
 	AccessToken    types.String `tfsdk:"access_token"`
 	ExpirationDate types.String `tfsdk:"expiration_date"`
+	Status         types.String `tfsdk:"status"`
 	CreatedOn      types.String `tfsdk:"created_on"`
 }
 
@@ -58,6 +64,14 @@ func (a *accessTokenResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"expiration_date": schema.StringAttribute{
 				Required: true,
+			},
+			"status": schema.StringAttribute{
+				MarkdownDescription: "Whether the token is active. `1` for active, `0` for disabled. " +
+					"The API requires it; defaults to `1`.",
+				Optional:   true,
+				Computed:   true,
+				Default:    stringdefault.StaticString("1"),
+				Validators: []validator.String{stringvalidator.OneOf("0", "1")},
 			},
 			"created_on": schema.StringAttribute{
 				Computed: true,
@@ -94,7 +108,7 @@ func (a *accessTokenResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	err := a.client.AccessToken.Create(ctx, plan.Name.ValueString(), plan.AccessToken.ValueString(), plan.ExpirationDate.ValueString())
+	err := a.client.AccessToken.Create(ctx, plan.Name.ValueString(), plan.AccessToken.ValueString(), plan.ExpirationDate.ValueString(), plan.Status.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating access token", err.Error())
 		return
@@ -131,8 +145,11 @@ func (a *accessTokenResource) Read(ctx context.Context, req resource.ReadRequest
 	for _, token := range tokens {
 		if token.AccessTokenIdentifier == state.Identifier.ValueString() {
 			state.Name = types.StringValue(token.Name)
-			state.ExpirationDate = types.StringValue(token.ExpirationDate)
 			state.CreatedOn = types.StringValue(token.CreatedOn)
+
+			// expiration_date is config-owned and the API echoes it back
+			// normalised ("2026-12-31" becomes "2026-12-31T00:00:00.000Z"),
+			// so refreshing it from the API produces a perpetual diff.
 			found = true
 			break
 		}
@@ -162,7 +179,7 @@ func (a *accessTokenResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	err := a.client.AccessToken.Update(ctx, state.Identifier.ValueString(), plan.Name.ValueString(), plan.ExpirationDate.ValueString())
+	err := a.client.AccessToken.Update(ctx, state.Identifier.ValueString(), plan.Name.ValueString(), plan.ExpirationDate.ValueString(), plan.Status.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating access token", err.Error())
 		return

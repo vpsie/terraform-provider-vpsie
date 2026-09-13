@@ -23,19 +23,19 @@ resource "vpsie_kubernetes_group" "example" {
 
 ### Required
 
-- `cluster_identifier` (String)
+- `cluster_identifier` (String) Identifier of the cluster the group belongs to. Changing it forces a new group.
+- `group_name` (String) Name of the node group. Changing it forces a new group.
+- `kube_size_id` (Number) Numeric id of the node size for this group, as reported by the Kubernetes offers endpoint. Changing it forces a new group.
 
 ### Read-Only
 
 - `boxsize_id` (Number)
 - `cluster_id` (Number)
-- `cluster_name` (String)
 - `cpu` (Number)
 - `created_on` (String)
 - `datacenter_id` (Number)
 - `dc_identifier` (String)
 - `dropped_on` (String)
-- `group_name` (String)
 - `id` (Number) The ID of this resource.
 - `identifier` (String)
 - `is_active` (Number)

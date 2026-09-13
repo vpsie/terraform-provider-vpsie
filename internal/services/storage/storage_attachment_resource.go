@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+
 	"github.com/vpsie/govpsie"
 )
 
@@ -41,15 +44,28 @@ func (s *storageAttachmentResource) Schema(_ context.Context, _ resource.SchemaR
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"vm_identifier": schema.StringAttribute{
+				MarkdownDescription: "Identifier of the server to attach the volume to. " +
+					"Changing it detaches and re-attaches the volume, so it forces a new attachment.",
 				Required: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"storage_identifier": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "Identifier of the storage volume. Changing it forces a new attachment.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"vm_type": schema.StringAttribute{
-				Default:  stringdefault.StaticString("vm"),
-				Optional: true,
-				Computed: true,
+				MarkdownDescription: "Type of target the volume attaches to. Changing it forces a new attachment.",
+				Default:             stringdefault.StaticString("vm"),
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 		},
 	}
@@ -104,21 +120,36 @@ func (s *storageAttachmentResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	storage, err := s.GetStorageSnapshotByIdentifier(ctx, state.StorageIdentifier.ValueString())
+	// Look the volume up in the STORAGE listing. This used to search the
+	// storage-SNAPSHOT listing, where a volume identifier can never appear, so
+	// the lookup always failed and every refresh silently dropped the
+	// attachment from state -- after which the next apply tried to attach again
+	// and was rejected with "This storage is currently attached to a Server".
+	storage, err := s.getStorageByIdentifier(ctx, state.StorageIdentifier.ValueString())
 	if err != nil {
-		if err.Error() == "snapshot not found" {
-			resp.State.RemoveResource(ctx)
-			return
-		}
-
-		resp.Diagnostics.AddError("Error reading storage snapshot", err.Error())
+		resp.Diagnostics.AddError("Error reading storage", err.Error())
 		return
 	}
 
-	if storage.Identifier == "" || storage.Identifier != state.StorageIdentifier.ValueString() {
-		tflog.Debug(ctx, "storage attachement %s was not found removing from state")
+	if storage == nil {
 		resp.State.RemoveResource(ctx)
+		return
 	}
+
+	// The volume still exists; make sure it is still attached to the server
+	// this resource manages. The listing reports the attachment either as the
+	// VM identifier or, on endpoints that omit it, as a non-zero box id.
+	attached := storage.BoxID != 0
+	if storage.VmIdentifier != "" {
+		attached = storage.VmIdentifier == state.VmIdentifier.ValueString()
+	}
+
+	if !attached {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
@@ -141,20 +172,30 @@ func (s *storageAttachmentResource) ImportState(ctx context.Context, req resourc
 	resource.ImportStatePassthroughID(ctx, path.Root("storage_identifier"), req, resp)
 }
 
+// Update is never called: every attribute is RequiresReplace, because moving a
+// volume means detaching it and attaching it again. Leaving this body empty
+// silently accepted the new values into state without touching the API.
 func (s *storageAttachmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	resp.Diagnostics.AddError(
+		"Storage attachment update is not supported",
+		"Every attribute of vpsie_storage_attachement forces replacement. Reaching this point "+
+			"means the schema and this method have drifted apart; please report it.",
+	)
 }
 
-func (s *storageAttachmentResource) GetStorageSnapshotByIdentifier(ctx context.Context, identifier string) (govpsie.StorageSnapShot, error) {
-	snapshots, err := s.client.Storage.ListSnapshots(ctx, nil)
+// getStorageByIdentifier returns the storage volume with the given identifier,
+// or nil when it no longer exists.
+func (s *storageAttachmentResource) getStorageByIdentifier(ctx context.Context, identifier string) (*govpsie.Storage, error) {
+	storages, err := s.client.Storage.List(ctx, nil)
 	if err != nil {
-		return govpsie.StorageSnapShot{}, err
+		return nil, err
 	}
 
-	for _, snap := range snapshots {
-		if snap.Identifier == identifier {
-			return snap, nil
+	for i := range storages {
+		if storages[i].Identifier == identifier {
+			return &storages[i], nil
 		}
 	}
 
-	return govpsie.StorageSnapShot{}, fmt.Errorf("snapshot not found")
+	return nil, nil
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/vpsie/govpsie"
 )
 
@@ -56,20 +57,26 @@ func (i *imageResource) Schema(ctx context.Context, _ resource.SchemaRequest, re
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"image_label": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "Label for the custom image. A custom image is fetched once, so changing this forces a new image.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"dc_identifier": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "Identifier of the datacenter to import the image into. A custom image is fetched once, so changing this forces a new image.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"fetched_from_url": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "URL the image is fetched from. A custom image is fetched once, so changing this forces a new image.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
@@ -283,13 +290,15 @@ func (i *imageResource) Read(ctx context.Context, req resource.ReadRequest, resp
 }
 
 // Update updates the resource and sets the updated Terraform state on success.
+// Update is never called: every configurable attribute is RequiresReplace,
+// because a custom image is fetched once and cannot be re-pointed in place.
 func (i *imageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var state imageResourceModel
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	resp.Diagnostics.AddError(
+		"Image update is not supported",
+		"The VPSIE API cannot re-fetch or rename a custom image in place, so every attribute "+
+			"forces replacement. Reaching this point means the schema and this method have "+
+			"drifted apart; please report it.",
+	)
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
