@@ -1,5 +1,12 @@
 ## 0.1.0 (Unreleased)
 
+BREAKING CHANGES:
+
+- **`vpsie_access_token`:** `access_token` is now computed (sensitive) and can no longer be set. The API generates the
+  token value, returns it once at creation and refuses a client-chosen one, so configurations that set it already
+  failed; drop the attribute. The value is stored in the state from the create response. govpsie is repinned to its
+  current main, whose `AccessToken.Create` takes no value and returns the generated one.
+
 FEATURES:
 
 - **New Resource:** `vpsie_tag`
