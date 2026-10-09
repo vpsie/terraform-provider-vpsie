@@ -7,6 +7,13 @@ BREAKING CHANGES:
   failed; drop the attribute. The value is stored in the state from the create response. govpsie is repinned to its
   current main, whose `AccessToken.Create` takes no value and returns the generated one.
 
+ENHANCEMENTS:
+
+- **`vpsie_loadbalancer`:** `rule.domain.cors_headers` (Optional): whether the domain adds permissive CORS response
+  headers, each only when the application did not send its own. Sent only when set (the API keeps the headers on
+  otherwise); when set, read back from the API so drift shows in the plan. Not set, it is not tracked, so an API
+  that does not return the field never makes the plan unknown.
+
 DEPRECATIONS:
 
 - **`vpsie_loadbalancer`:** `rule.domain.pass_through` is deprecated and must be `false`. TLS passthrough never

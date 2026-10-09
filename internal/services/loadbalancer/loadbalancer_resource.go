@@ -84,6 +84,7 @@ type lbDomainModel struct {
 	HealthCheckPath types.String     `tfsdk:"health_check_path"`
 	BackendScheme   types.String     `tfsdk:"backend_scheme"`
 	PassThrough     types.Bool       `tfsdk:"pass_through"`
+	CorsHeaders     types.Bool       `tfsdk:"cors_headers"`
 	DomainID        types.String     `tfsdk:"domain_id"`
 	Backends        []lbBackendModel `tfsdk:"backend"`
 }
@@ -391,6 +392,13 @@ func (l *loadbalancerResource) Schema(ctx context.Context, _ resource.SchemaRequ
 										MarkdownDescription: "Deprecated. Must be `false` when set: TLS passthrough is not supported " +
 											"and the API refuses `true`. Use `backend_scheme = \"https\"` to encrypt the traffic to the backends.",
 									},
+									"cors_headers": schema.BoolAttribute{
+										Optional: true,
+										MarkdownDescription: "Add permissive CORS response headers (`Access-Control-Allow-Origin *` and the related " +
+											"headers) to this domain's responses, each only when the application did not send its own. " +
+											"When not set, it is not sent (the API keeps the headers on) and not tracked; when set, it is sent " +
+											"and read back from the API.",
+									},
 									"domain_id": schema.StringAttribute{
 										Computed:            true,
 										MarkdownDescription: "Domain identifier assigned by the API.",
@@ -468,6 +476,7 @@ func domainsToAPI(domains []lbDomainModel) []govpsie.LBDomain {
 			HealthCheckPath: domain.HealthCheckPath.ValueString(),
 			BackendScheme:   domain.BackendScheme.ValueString(),
 			PassThrough:     false, // refused by the API when true; the attribute is deprecated
+			CorsHeaders:     boolPointer(domain.CorsHeaders),
 			Backends:        backendsToAPI(domain.Backends),
 		})
 	}
@@ -537,10 +546,12 @@ func applyIdentifiers(model *loadbalancerResourceModel, lb *govpsie.LBDetails) {
 			apiDomain, ok := apiDomains[domainKey(domain.DomainName.ValueString(), domain.Subdomain.ValueString())]
 			if !ok {
 				domain.DomainID = types.StringValue("")
+				domain.CorsHeaders = corsHeadersFromAPI(domain.CorsHeaders, nil)
 				applyBackendIdentifiers(domain.Backends, nil)
 				continue
 			}
 			domain.DomainID = types.StringValue(apiDomain.DomainID)
+			domain.CorsHeaders = corsHeadersFromAPI(domain.CorsHeaders, apiDomain.CorsHeaders)
 			applyBackendIdentifiers(domain.Backends, apiDomain.Backends)
 		}
 	}
@@ -550,6 +561,7 @@ func clearRuleIdentifiers(rule *lbRuleModel) {
 	applyBackendIdentifiers(rule.Backends, nil)
 	for j := range rule.Domains {
 		rule.Domains[j].DomainID = types.StringValue("")
+		rule.Domains[j].CorsHeaders = corsHeadersFromAPI(rule.Domains[j].CorsHeaders, nil)
 		applyBackendIdentifiers(rule.Domains[j].Backends, nil)
 	}
 }
@@ -938,6 +950,7 @@ func domainEqual(a, b lbDomainModel) bool {
 		a.HealthCheckPath.Equal(b.HealthCheckPath) &&
 		a.BackendScheme.Equal(b.BackendScheme) &&
 		a.PassThrough.Equal(b.PassThrough) &&
+		a.CorsHeaders.Equal(b.CorsHeaders) &&
 		backendsEqual(a.Backends, b.Backends)
 }
 
@@ -1045,6 +1058,7 @@ func rulesFromAPI(apiRules []govpsie.LBRuleDetail) []lbRuleModel {
 				HealthCheckPath: types.StringValue(apiDomain.HealthCheckPath),
 				BackendScheme:   types.StringValue(apiDomain.BackendScheme),
 				PassThrough:     types.BoolValue(false),
+				CorsHeaders:     corsHeadersFromAPI(types.BoolNull(), apiDomain.CorsHeaders),
 				DomainID:        types.StringValue(apiDomain.DomainID),
 				Backends:        backendsFromAPI(apiDomain.Backends),
 			})

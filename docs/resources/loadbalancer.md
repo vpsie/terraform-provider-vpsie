@@ -99,6 +99,7 @@ Optional:
 - `check_interval` (Number) Health check interval in milliseconds (minimum 100).
 - `cookie_check` (Boolean) Enable cookie-based session persistence.
 - `cookie_name` (String) Name of the persistence cookie when `cookie_check` is enabled.
+- `cors_headers` (Boolean) Add permissive CORS response headers (`Access-Control-Allow-Origin *` and the related headers) to this domain's responses, each only when the application did not send its own. When not set, it is not sent (the API keeps the headers on) and not tracked; when set, it is sent and read back from the API.
 - `domain_name` (String) Fully-qualified domain name served by this virtual host.
 - `fall` (Number) Consecutive failed checks before a target is considered unhealthy.
 - `fast_interval` (Number) Health check interval in milliseconds while a target is in transition (minimum 100).
