@@ -383,10 +383,13 @@ func (l *loadbalancerResource) Schema(ctx context.Context, _ resource.SchemaRequ
 										MarkdownDescription: "Protocol used towards the backends. One of `http` or `https`.",
 									},
 									"pass_through": schema.BoolAttribute{
-										Optional:            true,
-										Computed:            true,
-										Default:             booldefault.StaticBool(false),
-										MarkdownDescription: "Pass TLS through to the backends without terminating it.",
+										Optional:           true,
+										Computed:           true,
+										Default:            booldefault.StaticBool(false),
+										DeprecationMessage: passThroughDeprecation,
+										Validators:         []validator.Bool{passThroughMustBeFalse{}},
+										MarkdownDescription: "Deprecated. Must be `false` when set: TLS passthrough is not supported " +
+											"and the API refuses `true`. Use `backend_scheme = \"https\"` to encrypt the traffic to the backends.",
 									},
 									"domain_id": schema.StringAttribute{
 										Computed:            true,
@@ -464,7 +467,7 @@ func domainsToAPI(domains []lbDomainModel) []govpsie.LBDomain {
 			Fall:            int(domain.Fall.ValueInt64()),
 			HealthCheckPath: domain.HealthCheckPath.ValueString(),
 			BackendScheme:   domain.BackendScheme.ValueString(),
-			PassThrough:     domain.PassThrough.ValueBool(),
+			PassThrough:     false, // refused by the API when true; the attribute is deprecated
 			Backends:        backendsToAPI(domain.Backends),
 		})
 	}

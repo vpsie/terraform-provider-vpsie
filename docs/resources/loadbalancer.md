@@ -103,7 +103,7 @@ Optional:
 - `fall` (Number) Consecutive failed checks before a target is considered unhealthy.
 - `fast_interval` (Number) Health check interval in milliseconds while a target is in transition (minimum 100).
 - `health_check_path` (String) HTTP path polled for health checks.
-- `pass_through` (Boolean) Pass TLS through to the backends without terminating it.
+- `pass_through` (Boolean, Deprecated) Deprecated. Must be `false` when set: TLS passthrough is not supported and the API refuses `true`. Use `backend_scheme = "https"` to encrypt the traffic to the backends.
 - `redirect_http` (Number) Set to `1` to redirect plain HTTP to HTTPS.
 - `rise` (Number) Consecutive successful checks before a target is considered healthy.
 - `subdomain` (String) Subdomain label served by this virtual host.

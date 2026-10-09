@@ -7,6 +7,12 @@ BREAKING CHANGES:
   failed; drop the attribute. The value is stored in the state from the create response. govpsie is repinned to its
   current main, whose `AccessToken.Create` takes no value and returns the generated one.
 
+DEPRECATIONS:
+
+- **`vpsie_loadbalancer`:** `rule.domain.pass_through` is deprecated and must be `false`. TLS passthrough never
+  produced a working load balancer configuration, and the API now answers `true` with 400. The provider refuses
+  `true` at plan time and always sends `false`; use `backend_scheme = "https"` to encrypt the traffic to the backends.
+
 FEATURES:
 
 - **New Resource:** `vpsie_tag`
