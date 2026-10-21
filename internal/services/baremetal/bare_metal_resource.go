@@ -323,7 +323,7 @@ func (r *bareMetalResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Create:            true,
 				Update:            true,
 				Delete:            true,
-				CreateDescription: "How long to wait for the order and the OS install (default 60m). An order whose answer is lost (no answer, 502/503/504, Cloudflare 52x) is resent with the same idempotency key within this time; one still unconfirmed at the end is looked up by hostname and adopted.",
+				CreateDescription: "How long to wait for the order and the OS install (default 60m). An order whose answer is lost (no answer, 502/503/504, Cloudflare 52x) is resent with the same idempotency key within this time; one still unconfirmed at the end, or refused after a lost answer, is looked up by hostname and adopted.",
 				UpdateDescription: "How long to wait for a password reset and private network changes (default 60m).",
 				DeleteDescription: "How long to wait for the release (default 30m).",
 			}),

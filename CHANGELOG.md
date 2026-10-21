@@ -17,7 +17,9 @@ FEATURES:
   502/503/504, a Cloudflare 52x, or the first attempt still running) is resent with the same key until the `create`
   timeout; an order the API holds past its 300 s answer limit, or one still unconfirmed at the timeout, is looked up
   by hostname in its datacenter and adopted, so a lost answer neither buys a second server nor leaves an untracked
-  one. `script_identifiers` is an ordered list: the scripts run at first boot in that order. Build-to-order servers stay in state as `pending_build` until
+  one. A refusal that follows a lost answer is looked up the same way before it is reported, because authentication,
+  the permission check or the edge can refuse a resend before the API reads its key; when no new server is found, the
+  error names the hostname to check on the account before applying again. `script_identifiers` is an ordered list: the scripts run at first boot in that order. Build-to-order servers stay in state as `pending_build` until
   delivery. Import adopts a server by identifier; the first apply takes the plan, OS and password from the
   configuration without replacing it.
 - **New Data Source:** `vpsie_bare_metal_plans` (hardware plans of a datacenter, filterable by RAM, disk and GPU)

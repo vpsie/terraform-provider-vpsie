@@ -299,19 +299,84 @@ func TestDeploy_KeyHeldPastTheAnswerBoundIsLookedUp(t *testing.T) {
 	}
 }
 
-func TestDeploy_RefusalAfterUnknownOutcomeIsFinal(t *testing.T) {
+func TestDeploy_RefusalAfterUnknownOutcomeLooksTheOrderUp(t *testing.T) {
+	tests := map[string]struct {
+		lookup  fakeResponse
+		refusal fakeResponse
+		adopted bool
+		errHas  []string
+	}{
+		"one new server is adopted": {
+			lookup:  listJSON("bm-old:web1.example.com:dc-1", "bm-other:web1.example.com:dc-2", "bm-1:web1.example.com:dc-1"),
+			refusal: apiError(http.StatusInternalServerError, ""),
+			adopted: true,
+		},
+		"no new server": {
+			lookup:  listJSON("bm-old:web1.example.com:dc-1"),
+			refusal: apiError(http.StatusForbidden, "forbidden"),
+			errHas:  []string{`"web1.example.com"`, "earlier attempt whose outcome is unknown", "check the bare-metal servers of the account before applying again", "no new server with that name was found"},
+		},
+		"two new servers": {
+			lookup:  listJSON("bm-old:web1.example.com:dc-1", "bm-1:web1.example.com:dc-1", "bm-2:web1.example.com:dc-1"),
+			refusal: apiError(http.StatusTooManyRequests, ""),
+			errHas:  []string{`"web1.example.com"`, "bm-1, bm-2", "check the bare-metal servers of the account before applying again"},
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			fastWaits(t)
+			api, client := newFakeAPI(t)
+			api.on(http.MethodGet, listPath, listJSON("bm-old:web1.example.com:dc-1"), tc.lookup)
+			api.on(http.MethodPost, deployPath, apiError(524, ""), tc.refusal)
+
+			order, adopted, err := deploy(context.Background(), client, deployOrder())
+			if n := len(api.callsTo(http.MethodPost, deployPath)); n != 2 {
+				t.Errorf("deploy calls = %d, want 2", n)
+			}
+			if n := len(api.callsTo(http.MethodGet, listPath)); n != 2 {
+				t.Errorf("list calls = %d, want 2 (before the order and one lookup)", n)
+			}
+			if tc.adopted {
+				if err != nil || !adopted || order.Identifier != testServer {
+					t.Fatalf("order = %+v, adopted = %t, err = %v", order, adopted, err)
+				}
+				return
+			}
+			if err == nil || adopted {
+				t.Fatalf("adopted = %t, err = %v", adopted, err)
+			}
+			for _, want := range tc.errHas {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("err = %v, want it to contain %q", err, want)
+				}
+			}
+			var apiErr *govpsie.APIError
+			if !errors.As(err, &apiErr) || apiErr.StatusCode != tc.refusal.status {
+				t.Errorf("err = %v, want it to wrap the %d refusal", err, tc.refusal.status)
+			}
+		})
+	}
+}
+
+func TestDeploy_RefusalWithoutUnknownOutcomeIsFinal(t *testing.T) {
 	fastWaits(t)
 	api, client := newFakeAPI(t)
-	api.on(http.MethodGet, listPath, listJSON())
-	api.on(http.MethodPost, deployPath, apiError(524, ""), apiError(http.StatusUnprocessableEntity, "NoMachineAvailable"))
+	api.on(http.MethodGet, listPath, listJSON(), listJSON("bm-1:web1.example.com:dc-1"))
+	api.on(http.MethodPost, deployPath, apiError(http.StatusUnprocessableEntity, "NoMachineAvailable"))
 
 	_, adopted, err := deploy(context.Background(), client, deployOrder())
 	var apiErr *govpsie.APIError
 	if adopted || !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("adopted = %t, err = %v", adopted, err)
 	}
-	if n := len(api.callsTo(http.MethodPost, deployPath)); n != 2 {
-		t.Errorf("deploy calls = %d, want 2", n)
+	if strings.Contains(err.Error(), "check the bare-metal servers") {
+		t.Errorf("err = %v, want the refusal as it is", err)
+	}
+	if n := len(api.callsTo(http.MethodPost, deployPath)); n != 1 {
+		t.Errorf("deploy calls = %d, want 1", n)
+	}
+	if n := len(api.callsTo(http.MethodGet, listPath)); n != 1 {
+		t.Errorf("list calls = %d, want 1 (no lookup after a plain refusal)", n)
 	}
 }
 

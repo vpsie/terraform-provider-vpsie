@@ -113,7 +113,11 @@ func hasCode(err error, status int, code string) bool {
 // still holds the key (409 bareMetalDeployInProgress). The API answers a
 // resend of an order that went through with that order's answer, and runs a
 // resend of an order that failed (the failure gave the key back) as a new
-// order. A plain 500 or any other 4xx is a definite refusal.
+// order. A plain 500 or any other 4xx refuses this attempt. It says nothing
+// about an earlier attempt, though: authentication, the permission check and
+// the edge (WAF 403, 429) can answer before the API reads the key, so deploy
+// looks the order up before it returns a refusal that follows an unknown
+// outcome.
 func orderOutcomeUnknown(err error) bool {
 	var apiErr *govpsie.APIError
 	if !errors.As(err, &apiErr) {
@@ -207,9 +211,11 @@ func adoptedOrder(s *govpsie.BareMetalSummary) *govpsie.BareMetalDeployment {
 // progress for longer than deployAnswerBound, every round also looks the
 // order up by hostname (findOrder), every pollInterval. When ctx ends with
 // the outcome still open, one last lookup runs within orderLookupTimeout. A
-// server found by a lookup is returned with adopted set; when none is
-// found the error names the hostname, so the user checks the account
-// before ordering again.
+// refusal ends the loop: it is returned as it is when every earlier attempt
+// was refused or none was made, and after an unknown outcome it is returned
+// only after one lookup within orderLookupTimeout. A server found by a
+// lookup is returned with adopted set; when none is found the error names
+// the hostname, so the user checks the account before ordering again.
 func deploy(ctx context.Context, client *govpsie.Client, req *govpsie.BareMetalDeployRequest) (order *govpsie.BareMetalDeployment, adopted bool, err error) {
 	key, err := newIdempotencyKey()
 	if err != nil {
@@ -219,6 +225,9 @@ func deploy(ctx context.Context, client *govpsie.Client, req *govpsie.BareMetalD
 	before := accountServers(ctx, client)
 	start := time.Now()
 	var lastErr error
+	// outcomeOpen records that an attempt of this order had an unknown
+	// outcome, so that the server may have been sold.
+	outcomeOpen := false
 	for attempt := 1; ; attempt++ {
 		if attempt > 1 {
 			wait := retryInterval
@@ -250,12 +259,25 @@ func deploy(ctx context.Context, client *govpsie.Client, req *govpsie.BareMetalD
 			break
 		}
 		if !orderOutcomeUnknown(sendErr) {
-			return nil, false, sendErr
+			if !outcomeOpen {
+				return nil, false, sendErr
+			}
+			// An earlier attempt may have sold the server; this refusal may
+			// have come before the API read the key.
+			return lastLookup(ctx, client, req, before, "was refused after an earlier attempt whose outcome is unknown", sendErr)
 		}
+		outcomeOpen = true
 	}
 
-	// The create timeout ran out with the outcome open: one last lookup, on
-	// a context of its own.
+	return lastLookup(ctx, client, req, before, "was sent but not confirmed before the create timeout", lastErr)
+}
+
+// lastLookup runs the lookup that ends an order whose outcome stayed open:
+// on a context of its own, so that it also runs after the create timeout or
+// a cancel, within orderLookupTimeout. A server it finds is adopted;
+// otherwise the error says what happened to the order, names the hostname
+// and wraps lastErr.
+func lastLookup(ctx context.Context, client *govpsie.Client, req *govpsie.BareMetalDeployRequest, before map[string]bool, what string, lastErr error) (*govpsie.BareMetalDeployment, bool, error) {
 	lookupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), orderLookupTimeout)
 	defer cancel()
 	found, lookupErr := findOrder(lookupCtx, client, req, before)
@@ -268,10 +290,10 @@ func deploy(ctx context.Context, client *govpsie.Client, req *govpsie.BareMetalD
 		lookup = "the lookup failed: " + lookupErr.Error()
 	}
 
-	return nil, false, fmt.Errorf("the order of server %q in datacenter %s was sent but not confirmed before the create timeout, "+
+	return nil, false, fmt.Errorf("the order of server %q in datacenter %s %s, "+
 		"and %s. It may still have been sold: check the bare-metal servers of the account before applying again, and "+
-		"import a server named %q with terraform import instead of ordering another (last error: %v)",
-		req.Hostname, req.DCIdentifier, lookup, req.Hostname, lastErr)
+		"import a server named %q with terraform import instead of ordering another (last error: %w)",
+		req.Hostname, req.DCIdentifier, what, lookup, req.Hostname, lastErr)
 }
 
 // waitForOS reads the server until its OS is running: after an order or a
