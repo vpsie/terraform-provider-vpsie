@@ -9,6 +9,16 @@ BREAKING CHANGES:
 
 FEATURES:
 
+- **New Resource:** `vpsie_bare_metal` orders a dedicated server and waits until its OS is running, bounded by the
+  `create` timeout. Hostname, project, administrator password (reset in place, with a wait) and private networks
+  (attached and detached in place, with a wait) change without a new server; the plan, OS and other install-time
+  inputs force a replacement. Destroy releases the server with the provider's `account_password` and waits for it to
+  leave the account. Orders are sent with an idempotency key and resent with the same key only when no answer
+  arrived, so a retry never buys a second server. Build-to-order servers stay in state as `pending_build` until
+  delivery. Import adopts a server by identifier; the first apply takes the plan, OS and password from the
+  configuration without replacing it.
+- **New Data Source:** `vpsie_bare_metal_plans` (hardware plans of a datacenter, filterable by RAM, disk and GPU)
+- **New Data Source:** `vpsie_bare_metal_os` (installable operating systems, optionally for one plan)
 - **New Resource:** `vpsie_tag`
 - **New Resource:** `vpsie_certificate`
 - **New Resource:** `vpsie_server_group`

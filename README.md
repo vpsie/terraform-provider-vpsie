@@ -107,6 +107,7 @@ Every resource has a matching `data` source for lookups unless noted.
 | Resource | Data source |
 | --- | --- |
 | `vpsie_server` | `vpsie_servers` |
+| `vpsie_bare_metal` | `vpsie_bare_metal_plans`, `vpsie_bare_metal_os` (catalogue lookups) |
 | `vpsie_image` | `vpsie_images` |
 | `vpsie_server_snapshot` | `vpsie_server_snapshots` |
 | `vpsie_snapshot_policy` | `vpsie_snapshot_policies` |
@@ -171,6 +172,13 @@ Full, per-attribute documentation for every resource and data source lives in
 - **Tag deletion.** The VPSie API has no endpoint to delete a tag definition, so
   destroying a `vpsie_tag` removes it from state and emits a warning; remove the
   tag itself from the console if needed.
+- **Bare-metal servers.** Ordering one bills the account and installs the OS,
+  which takes up to an hour; raise `timeouts.create` for slow plans. Changing the
+  plan, OS, SSH keys or user data orders a new server and releases the old one,
+  wiping its disks; use `lifecycle { prevent_destroy = true }` on servers that hold
+  data. Destroy needs `account_password` (or `VPSIE_ACCOUNT_PASSWORD`). A
+  build-to-order server stays in state as `pending_build` and cannot be released
+  through the API until it is delivered.
 - **Scaling managed databases.** Changing `node_count` scales the cluster one
   node at a time; other attributes force replacement.
 - **Importing certificates.** The API does not return the source `domain_id`, so

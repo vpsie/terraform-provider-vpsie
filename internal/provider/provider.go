@@ -17,6 +17,7 @@ import (
 	"github.com/vpsie/govpsie"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/accesstoken"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/backup"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/baremetal"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/bucket"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/certificate"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/datacenter"
@@ -96,7 +97,9 @@ func (p *VpsieProvider) Schema(ctx context.Context, req provider.SchemaRequest, 
 					"operation against the **account** password, not the server's own root password. " +
 					"Without it the API answers `You entered the wrong password` while still " +
 					"returning HTTP 200, so the server keeps running and billing after Terraform " +
-					"has dropped it from state.",
+					"has dropped it from state. Destroying a `vpsie_bare_metal` server needs it too: " +
+					"the release is confirmed with the account password, and Terraform refuses to " +
+					"destroy without it.",
 				Optional:  true,
 				Sensitive: true,
 			},
@@ -221,6 +224,7 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		servergroup.NewServerGroupMemberResource,
 		registry.NewRegistryResource,
 		manageddb.NewManagedDatabaseResource,
+		baremetal.NewBareMetalResource,
 	}
 }
 
@@ -243,6 +247,8 @@ func (p *VpsieProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		loadbalancer.NewLoadbalancerDataSource,
 		kubernetes.NewKubernetesGroupDataSource,
 		datacenter.NewDatacenterDataSource,
+		baremetal.NewBareMetalPlansDataSource,
+		baremetal.NewBareMetalOSDataSource,
 		fip.NewFipDataSource,
 		bucket.NewBucketDataSource,
 		backup.NewBackupPolicyDataSource,
