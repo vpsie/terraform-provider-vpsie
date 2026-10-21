@@ -173,7 +173,10 @@ Full, per-attribute documentation for every resource and data source lives in
   destroying a `vpsie_tag` removes it from state and emits a warning; remove the
   tag itself from the console if needed.
 - **Bare-metal servers.** Ordering one bills the account and installs the OS,
-  which takes up to an hour; raise `timeouts.create` for slow plans. Changing the
+  which takes up to an hour; raise `timeouts.create` for slow plans. An order whose
+  answer is lost is resent with the same idempotency key, and a server sold anyway
+  is found by its hostname and adopted, so keep hostnames unique per datacenter.
+  Startup scripts (`script_identifiers`) run in the listed order. Changing the
   plan, OS, SSH keys or user data orders a new server and releases the old one,
   wiping its disks; use `lifecycle { prevent_destroy = true }` on servers that hold
   data. Destroy needs `account_password` (or `VPSIE_ACCOUNT_PASSWORD`). A

@@ -71,6 +71,7 @@ var (
 	_ planmodifier.String = installInput{}
 	_ planmodifier.Int64  = installInput{}
 	_ planmodifier.Set    = installInput{}
+	_ planmodifier.List   = installInput{}
 	_ planmodifier.Object = installInput{}
 )
 
@@ -91,6 +92,10 @@ func (installInput) PlanModifyInt64(ctx context.Context, req planmodifier.Int64R
 }
 
 func (installInput) PlanModifySet(ctx context.Context, req planmodifier.SetRequest, resp *planmodifier.SetResponse) {
+	resp.RequiresReplace = installInputNeedsReplace(ctx, req.State, req.Plan, req.StateValue, req.PlanValue, req.ConfigValue)
+}
+
+func (installInput) PlanModifyList(ctx context.Context, req planmodifier.ListRequest, resp *planmodifier.ListResponse) {
 	resp.RequiresReplace = installInputNeedsReplace(ctx, req.State, req.Plan, req.StateValue, req.PlanValue, req.ConfigValue)
 }
 

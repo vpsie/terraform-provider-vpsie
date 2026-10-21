@@ -83,7 +83,7 @@ resource "vpsie_bare_metal" "example" {
 - `release_note` (String) Note recorded when Terraform releases the server.
 - `release_reason` (String) Reason recorded when Terraform releases the server. Defaults to `Destroyed by Terraform`.
 - `remote_access` (Attributes) Remote-access firewall rules written at install time. Without the block the server opens SSH (or RDP on Windows) to the internet. Changing this value orders a new server and releases the current one, except when the value is set for the first time on a server adopted with terraform import. (see [below for nested schema](#nestedatt--remote_access))
-- `script_identifiers` (Set of String) Identifiers of the account's saved scripts to run on first boot (at most 5). Changing this value orders a new server and releases the current one, except when the value is set for the first time on a server adopted with terraform import.
+- `script_identifiers` (List of String) Identifiers of the account's saved scripts to run on first boot, in the listed order (at most 5, each once). Changing the order also orders a new server. Changing this value orders a new server and releases the current one, except when the value is set for the first time on a server adopted with terraform import.
 - `ssh_key_identifiers` (Set of String) Identifiers of the account's SSH keys to install (at most 10). Changing this value orders a new server and releases the current one, except when the value is set for the first time on a server adopted with terraform import.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `user_data` (String, Sensitive) Cloud-init user data run on first boot: a document starting with `#cloud-config` or a script starting with `#!`, at most 64 KB. Changing this value orders a new server and releases the current one, except when the value is set for the first time on a server adopted with terraform import.
@@ -119,7 +119,7 @@ Optional:
 
 Optional:
 
-- `create` (String) How long to wait for the order and the OS install (default 60m).
+- `create` (String) How long to wait for the order and the OS install (default 60m). An order whose answer is lost (no answer, 502/503/504, Cloudflare 52x) is resent with the same idempotency key within this time; one still unconfirmed at the end is looked up by hostname and adopted.
 - `delete` (String) How long to wait for the release (default 30m).
 - `update` (String) How long to wait for a password reset and private network changes (default 60m).
 

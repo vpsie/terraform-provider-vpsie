@@ -135,7 +135,7 @@ func (d *bareMetalOSDataSource) Read(ctx context.Context, req datasource.ReadReq
 				OSFamily:                 types.StringValue(v.OSFamily),
 				GPU:                      types.BoolValue(v.GPU),
 				RemoteAccessConfigurable: types.BoolValue(v.RemoteAccessConfigurable),
-				IsDefault:                types.BoolValue(v.IsDefault),
+				IsDefault:                types.BoolValue(bool(v.IsDefault)),
 			})
 		}
 	}

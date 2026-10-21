@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -89,6 +91,7 @@ func int64s(t *testing.T, set types.Set) []int64 {
 func TestCreate_OrdersWaitsForOSAndAttachesNetworks(t *testing.T) {
 	fastWaits(t)
 	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, listJSON())
 	api.on(http.MethodPost, deployPath, ok(deployJSON(govpsie.BareMetalOrderSold, 0)))
 	// The server detail lags behind the networks endpoint: it never lists
 	// network 7, and the applied value must still equal the planned one.
@@ -148,10 +151,14 @@ func TestCreate_OrdersWaitsForOSAndAttachesNetworks(t *testing.T) {
 func TestCreate_ResendsUnconfirmedOrderWithSameKey(t *testing.T) {
 	fastWaits(t)
 	api, client := newFakeAPI(t)
-	api.on(http.MethodPost, deployPath,
-		apiError(http.StatusServiceUnavailable, "unavailable"),
-		apiError(http.StatusConflict, codeDeployInProgress),
-		ok(deployJSON(govpsie.BareMetalOrderSold, 0)))
+	api.on(http.MethodGet, listPath, listJSON())
+	// A gateway failure, a Cloudflare timeout, then the first attempt still
+	// running for more rounds than a counted retry would allow.
+	responses := []fakeResponse{apiError(http.StatusServiceUnavailable, "unavailable"), apiError(524, "")}
+	for i := 0; i < 6; i++ {
+		responses = append(responses, apiError(http.StatusConflict, codeDeployInProgress))
+	}
+	api.on(http.MethodPost, deployPath, append(responses, ok(deployJSON(govpsie.BareMetalOrderSold, 0)))...)
 	api.on(http.MethodGet, testServerPath, ok(serverJSON("running", "web1.example.com", `[{"networkId":3,"status":"attached"}]`)))
 
 	plan := plannedModel()
@@ -160,8 +167,11 @@ func TestCreate_ResendsUnconfirmedOrderWithSameKey(t *testing.T) {
 	requireNoErrors(t, resp.Diagnostics, resp.Diagnostics)
 
 	deploys := api.callsTo(http.MethodPost, deployPath)
-	if len(deploys) != 3 {
-		t.Fatalf("deploy calls = %d, want 3", len(deploys))
+	if len(deploys) != 9 {
+		t.Fatalf("deploy calls = %d, want 9", len(deploys))
+	}
+	if resp.Diagnostics.WarningsCount() != 0 {
+		t.Errorf("a confirmed order reported as adopted: %v", resp.Diagnostics)
 	}
 	key := deploys[0].header.Get("Idempotency-Key")
 	for i, d := range deploys {
@@ -174,9 +184,62 @@ func TestCreate_ResendsUnconfirmedOrderWithSameKey(t *testing.T) {
 	}
 }
 
+func TestCreate_OrderFoundAfterTheCreateTimeoutIsSavedTainted(t *testing.T) {
+	fastWaits(t)
+	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, listJSON(), listJSON("bm-1:web1.example.com:dc-1"))
+	api.on(http.MethodPost, deployPath, apiError(524, ""))
+	api.on(http.MethodGet, testServerPath, ok(serverJSON("installing", "web1.example.com", `[]`)))
+
+	plan := plannedModel()
+	plan.Timeouts = timeouts.Value{Object: types.ObjectValueMust(map[string]attr.Type{
+		"create": types.StringType, "update": types.StringType, "delete": types.StringType,
+	}, map[string]attr.Value{
+		"create": types.StringValue("100ms"), "update": types.StringNull(), "delete": types.StringNull(),
+	})}
+	resp := runCreate(t, newTestResource(client), plan)
+	if !resp.Diagnostics.HasError() || resp.Diagnostics.WarningsCount() != 1 {
+		t.Fatalf("want one error (tainted) and one warning (adopted), got %v", resp.Diagnostics)
+	}
+	if resp.State.Raw.IsNull() || !resp.State.Raw.IsFullyKnown() {
+		t.Fatal("the server found by the lookup must be saved, fully known, so it is tracked rather than lost")
+	}
+	got := fromState(t, resp.State)
+	if got.Identifier.ValueString() != testServer || got.OsPhase.ValueString() != "installing" || got.IPAddress.ValueString() != "203.0.113.10" {
+		t.Errorf("identifier = %q, os_phase = %q, ip = %q", got.Identifier.ValueString(), got.OsPhase.ValueString(), got.IPAddress.ValueString())
+	}
+	if n := len(api.callsTo(http.MethodPost, testNetworksPath)); n != 0 {
+		t.Errorf("attached networks after the create timeout: %d calls", n)
+	}
+}
+
+func TestCreate_ScriptsAreSentInTheConfiguredOrder(t *testing.T) {
+	fastWaits(t)
+	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, listJSON())
+	api.on(http.MethodPost, deployPath, ok(deployJSON(govpsie.BareMetalOrderSold, 0)))
+	api.on(http.MethodGet, testServerPath, ok(serverJSON("running", "web1.example.com", `[]`)))
+	api.on(http.MethodPost, testNetworksPath, accepted(`{"networkId":7,"status":"attaching"}`))
+	api.on(http.MethodGet, testNetworksPath, ok(networksJSON(`[{"networkId":7,"status":"attached"}]`)))
+
+	plan := plannedModel()
+	plan.ScriptIdentifiers = stringList("zz-install-agent", "aa-configure-agent")
+	resp := runCreate(t, newTestResource(client), plan)
+	requireNoErrors(t, resp.Diagnostics, resp.Diagnostics)
+
+	deploys := api.callsTo(http.MethodPost, deployPath)
+	if len(deploys) != 1 || !strings.Contains(deploys[0].body, `"scriptIds":["zz-install-agent","aa-configure-agent"]`) {
+		t.Fatalf("deploy body = %v", deploys)
+	}
+	if got := fromState(t, resp.State).ScriptIdentifiers; !got.Equal(plan.ScriptIdentifiers) {
+		t.Errorf("script_identifiers = %s", got)
+	}
+}
+
 func TestCreate_RefusedOrderIsNotResent(t *testing.T) {
 	fastWaits(t)
 	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, listJSON())
 	api.on(http.MethodPost, deployPath, apiError(http.StatusUnprocessableEntity, "bareMetalOutOfStock"))
 
 	resp := runCreate(t, newTestResource(client), plannedModel())
@@ -194,6 +257,7 @@ func TestCreate_RefusedOrderIsNotResent(t *testing.T) {
 func TestCreate_FailedInstallKeepsServerInState(t *testing.T) {
 	fastWaits(t)
 	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, listJSON())
 	api.on(http.MethodPost, deployPath, ok(deployJSON(govpsie.BareMetalOrderSold, 0)))
 	api.on(http.MethodGet, testServerPath, ok(serverJSON("failed", "web1.example.com", `[]`)))
 
@@ -215,6 +279,7 @@ func TestCreate_FailedInstallKeepsServerInState(t *testing.T) {
 func TestCreate_BuildToOrderSavesTheOrder(t *testing.T) {
 	fastWaits(t)
 	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, listJSON())
 	api.on(http.MethodPost, deployPath, ok(deployJSON(govpsie.BareMetalOrderPendingBuild, 72)))
 
 	resp := runCreate(t, newTestResource(client), plannedModel())

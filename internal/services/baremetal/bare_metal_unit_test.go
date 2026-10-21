@@ -7,10 +7,12 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -88,6 +90,20 @@ func TestInstallInputReplacement(t *testing.T) {
 			t.Error("changing SSH keys must replace the server")
 		}
 	})
+
+	t.Run("script order changed", func(t *testing.T) {
+		req := planmodifier.ListRequest{
+			State: toState(t, s, applied), Plan: toPlan(t, s, applied),
+			StateValue:  stringList("install-agent", "configure-agent"),
+			PlanValue:   stringList("configure-agent", "install-agent"),
+			ConfigValue: stringList("configure-agent", "install-agent"),
+		}
+		var resp planmodifier.ListResponse
+		replaceInstallInput().PlanModifyList(ctx, req, &resp)
+		if !resp.RequiresReplace {
+			t.Error("the scripts run in order at first boot, so a new order must replace the server")
+		}
+	})
 }
 
 func TestPasswordProblem(t *testing.T) {
@@ -148,40 +164,183 @@ func TestUserDataValidator(t *testing.T) {
 	}
 }
 
-func TestDeployRetryable(t *testing.T) {
+func TestOrderOutcomeUnknown(t *testing.T) {
 	tests := []struct {
 		name string
 		err  error
 		want bool
 	}{
 		{"transport", errors.New("connection reset"), true},
+		{"attempt cut off", &url.Error{Op: "Post", URL: "https://api", Err: context.DeadlineExceeded}, true},
 		{"gateway", &govpsie.APIError{StatusCode: http.StatusBadGateway}, true},
 		{"unavailable", &govpsie.APIError{StatusCode: http.StatusServiceUnavailable}, true},
+		{"gateway timeout", &govpsie.APIError{StatusCode: http.StatusGatewayTimeout}, true},
+		{"cloudflare 520", &govpsie.APIError{StatusCode: 520}, true},
+		{"cloudflare 522", &govpsie.APIError{StatusCode: 522}, true},
+		{"cloudflare 524", &govpsie.APIError{StatusCode: 524}, true},
 		{"in progress", &govpsie.APIError{StatusCode: http.StatusConflict, Code: codeDeployInProgress}, true},
-		{"other conflict", &govpsie.APIError{StatusCode: http.StatusConflict, Code: "hostnameTaken"}, false},
+		{"other conflict", &govpsie.APIError{StatusCode: http.StatusConflict, Code: "bareMetalIdempotencyKeyReused"}, false},
 		{"internal", &govpsie.APIError{StatusCode: http.StatusInternalServerError}, false},
 		{"invalid", &govpsie.APIError{StatusCode: http.StatusUnprocessableEntity}, false},
-		{"deadline", context.DeadlineExceeded, false},
-		{"canceled", context.Canceled, false},
 	}
 	for _, tc := range tests {
-		if got := deployRetryable(tc.err); got != tc.want {
-			t.Errorf("%s: deployRetryable = %t, want %t", tc.name, got, tc.want)
+		if got := orderOutcomeUnknown(tc.err); got != tc.want {
+			t.Errorf("%s: orderOutcomeUnknown = %t, want %t", tc.name, got, tc.want)
 		}
 	}
 }
 
-func TestDeploy_StopsAfterMaxAttempts(t *testing.T) {
+// deployOrder is the order the deploy tests send.
+func deployOrder() *govpsie.BareMetalDeployRequest {
+	return &govpsie.BareMetalDeployRequest{DCIdentifier: "dc-1", PlanIdentifier: "plan-1", Hostname: "web1.example.com"}
+}
+
+// listJSON is the GET /bare-metal answer with the given servers, each
+// "identifier:hostname:dc".
+func listJSON(servers ...string) fakeResponse {
+	rows := make([]string, 0, len(servers))
+	for _, s := range servers {
+		f := strings.SplitN(s, ":", 3)
+		rows = append(rows, `{"identifier":"`+f[0]+`","machine_name":"`+f[1]+`","datacenter_identifier":"`+f[2]+`","osPhase":"installing"}`)
+	}
+
+	return fakeResponse{status: http.StatusOK, body: `{"success":true,"data":[` + strings.Join(rows, ",") + `]}`}
+}
+
+func TestDeploy_UnknownOutcomeIsResentUntilTheDeadline(t *testing.T) {
 	fastWaits(t)
 	api, client := newFakeAPI(t)
-	api.on(http.MethodPost, deployPath, apiError(http.StatusServiceUnavailable, "unavailable"))
+	api.on(http.MethodGet, listPath, listJSON("bm-old:web1.example.com:dc-1"))
+	api.on(http.MethodPost, deployPath, apiError(524, ""))
 
-	_, err := deploy(context.Background(), client, &govpsie.BareMetalDeployRequest{})
-	if err == nil {
-		t.Fatal("want an error")
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_, adopted, err := deploy(ctx, client, deployOrder())
+	if err == nil || adopted {
+		t.Fatalf("want an error, got adopted = %t, err = %v", adopted, err)
 	}
-	if n := len(api.callsTo(http.MethodPost, deployPath)); n != maxDeployAttempts {
-		t.Errorf("deploy calls = %d, want %d", n, maxDeployAttempts)
+	// More attempts than the five of a counted retry: the deadline bounds it.
+	if n := len(api.callsTo(http.MethodPost, deployPath)); n <= 5 {
+		t.Errorf("deploy calls = %d, want more than 5 within the deadline", n)
+	}
+	for _, want := range []string{`"web1.example.com"`, "dc-1", "no new server", "terraform import"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not name %s", err, want)
+		}
+	}
+	// The server that was there before the order is never adopted.
+	if n := len(api.callsTo(http.MethodGet, listPath)); n != 2 {
+		t.Errorf("list calls = %d, want 2 (before the order and the last lookup)", n)
+	}
+}
+
+func TestDeploy_UnknownOutcomeAtTheDeadlineAdoptsTheNewServer(t *testing.T) {
+	fastWaits(t)
+	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath,
+		listJSON("bm-old:web1.example.com:dc-1"),
+		listJSON("bm-old:web1.example.com:dc-1", "bm-other:web1.example.com:dc-2", "bm-1:WEB1.example.com:dc-1"))
+	api.on(http.MethodPost, deployPath, apiError(524, ""))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	order, adopted, err := deploy(ctx, client, deployOrder())
+	if err != nil || !adopted {
+		t.Fatalf("adopted = %t, err = %v", adopted, err)
+	}
+	if order.Identifier != testServer || order.Status != govpsie.BareMetalOrderSold {
+		t.Errorf("order = %+v", order)
+	}
+}
+
+func TestDeploy_AmbiguousLookupIsNotAdopted(t *testing.T) {
+	fastWaits(t)
+	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, listJSON(), listJSON("bm-1:web1.example.com:dc-1", "bm-2:web1.example.com:dc-1"))
+	api.on(http.MethodPost, deployPath, apiError(http.StatusGatewayTimeout, ""))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_, adopted, err := deploy(ctx, client, deployOrder())
+	if err == nil || adopted || !strings.Contains(err.Error(), "bm-1, bm-2") {
+		t.Fatalf("adopted = %t, err = %v", adopted, err)
+	}
+}
+
+func TestDeploy_NoAdoptionWithoutTheListBeforeTheOrder(t *testing.T) {
+	fastWaits(t)
+	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, apiError(http.StatusInternalServerError, ""), listJSON("bm-1:web1.example.com:dc-1"))
+	api.on(http.MethodPost, deployPath, apiError(524, ""))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_, adopted, err := deploy(ctx, client, deployOrder())
+	if err == nil || adopted || !strings.Contains(err.Error(), "could not be listed before the order") {
+		t.Fatalf("adopted = %t, err = %v", adopted, err)
+	}
+}
+
+func TestDeploy_KeyHeldPastTheAnswerBoundIsLookedUp(t *testing.T) {
+	fastWaits(t)
+	deployAnswerBound = 20 * time.Millisecond
+	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, listJSON(), listJSON(), listJSON("bm-1:web1.example.com:dc-1"))
+	api.on(http.MethodPost, deployPath, apiError(http.StatusConflict, codeDeployInProgress))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	order, adopted, err := deploy(ctx, client, deployOrder())
+	if err != nil || !adopted || order.Identifier != testServer {
+		t.Fatalf("order = %+v, adopted = %t, err = %v", order, adopted, err)
+	}
+	if ctx.Err() != nil {
+		t.Error("the order was found only by the last lookup at the deadline, not while the key was held")
+	}
+}
+
+func TestDeploy_RefusalAfterUnknownOutcomeIsFinal(t *testing.T) {
+	fastWaits(t)
+	api, client := newFakeAPI(t)
+	api.on(http.MethodGet, listPath, listJSON())
+	api.on(http.MethodPost, deployPath, apiError(524, ""), apiError(http.StatusUnprocessableEntity, "NoMachineAvailable"))
+
+	_, adopted, err := deploy(context.Background(), client, deployOrder())
+	var apiErr *govpsie.APIError
+	if adopted || !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("adopted = %t, err = %v", adopted, err)
+	}
+	if n := len(api.callsTo(http.MethodPost, deployPath)); n != 2 {
+		t.Errorf("deploy calls = %d, want 2", n)
+	}
+}
+
+func TestScriptIdentifiers_OrderedUniqueList(t *testing.T) {
+	attr, ok := resourceSchema(t).Attributes["script_identifiers"].(schema.ListAttribute)
+	if !ok {
+		t.Fatalf("script_identifiers is %T, want a list: the API runs the scripts in order", resourceSchema(t).Attributes["script_identifiers"])
+	}
+
+	tests := map[string]struct {
+		ids   []string
+		valid bool
+	}{
+		"ordered":   {[]string{"install-agent", "configure-agent"}, true},
+		"duplicate": {[]string{"install-agent", "install-agent"}, false},
+		"too many":  {[]string{"a", "b", "c", "d", "e", "f"}, false},
+		"pattern":   {[]string{"bad id"}, false},
+		"too long":  {[]string{strings.Repeat("a", 65)}, false},
+	}
+	for name, tc := range tests {
+		var resp validator.ListResponse
+		for _, v := range attr.ListValidators() {
+			v.ValidateList(context.Background(), validator.ListRequest{
+				Path: path.Root("script_identifiers"), ConfigValue: stringList(tc.ids...),
+			}, &resp)
+		}
+		if got := !resp.Diagnostics.HasError(); got != tc.valid {
+			t.Errorf("%s: valid = %t, want %t (%v)", name, got, tc.valid, resp.Diagnostics)
+		}
 	}
 }
 
@@ -286,7 +445,7 @@ func TestPlansDataSource_FiltersAndFlattens(t *testing.T) {
 	api, client := newFakeAPI(t)
 	api.on(http.MethodGet, "/apps/v2/bare-metal/dc/dc-1/hardware-plans", ok(`[{"identifier":"plan-1","name":"GPU-1","cpuCount":32,"ramGb":128,`+
 		`"diskGb":1920,"gpuModel":"L40S","gpuCount":2,"price":"899.00","currency":"USD","setupFee":0,"delivery":"instant",`+
-		`"contractTerms":[{"term":"monthly","discountPct":0},{"term":"hourly"}],"linkSpeedOptions":[1000,10000],"availableServers":3}]`))
+		`"contractTerms":[{"term":"monthly","discountPct":0},{"term":"hourly"}],"linkSpeedOptions":[1000,10000],"availableServers":3,"isActive":1}]`))
 
 	d := &bareMetalPlansDataSource{client: client}
 	state := readDataSource(t, d, &bareMetalPlansDataSourceModel{
@@ -324,9 +483,9 @@ func TestPlansDataSource_FiltersAndFlattens(t *testing.T) {
 func TestOSDataSource_FlattensVersions(t *testing.T) {
 	api, client := newFakeAPI(t)
 	api.on(http.MethodGet, "/apps/v2/bare-metal/dc/dc-1/os", ok(`[`+
-		`{"name":"Ubuntu","is_default":true,"available_versions":[{"identifier":"bmos_u2404","fullname":"Ubuntu 24.04 LTS","osFamily":"linux","is_default":true},`+
-		`{"identifier":"bmos_u2404_gpu","fullname":"Ubuntu 24.04 LTS (GPU)","osFamily":"linux","gpu":true}]},`+
-		`{"name":"Windows Server","available_versions":[{"identifier":"bmos_w2022","fullname":"Windows Server 2022","osFamily":"windows","remoteAccessConfigurable":true}]}]`))
+		`{"name":"Ubuntu","is_default":1,"available_versions":[{"identifier":"bmos_u2404","fullname":"Ubuntu 24.04 LTS","osFamily":"linux","is_default":1},`+
+		`{"identifier":"bmos_u2404_gpu","fullname":"Ubuntu 24.04 LTS (GPU)","osFamily":"linux","gpu":true,"is_default":0}]},`+
+		`{"name":"Windows Server","is_default":0,"available_versions":[{"identifier":"bmos_w2022","fullname":"Windows Server 2022","osFamily":"windows","remoteAccessConfigurable":true,"is_default":0}]}]`))
 
 	d := &bareMetalOSDataSource{client: client}
 	state := readDataSource(t, d, &bareMetalOSDataSourceModel{
@@ -344,7 +503,10 @@ func TestOSDataSource_FlattensVersions(t *testing.T) {
 	if len(got.OperatingSystems) != 3 {
 		t.Fatalf("operating systems = %d, want 3", len(got.OperatingSystems))
 	}
-	gpu, win := got.OperatingSystems[1], got.OperatingSystems[2]
+	def, gpu, win := got.OperatingSystems[0], got.OperatingSystems[1], got.OperatingSystems[2]
+	if !def.IsDefault.ValueBool() || gpu.IsDefault.ValueBool() || win.IsDefault.ValueBool() {
+		t.Errorf("is_default = %s, %s, %s; want true, false, false", def.IsDefault, gpu.IsDefault, win.IsDefault)
+	}
 	if gpu.Identifier.ValueString() != "bmos_u2404_gpu" || !gpu.GPU.ValueBool() || gpu.Distribution.ValueString() != "Ubuntu" {
 		t.Errorf("gpu entry = %+v", gpu)
 	}

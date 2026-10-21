@@ -22,6 +22,7 @@ import (
 
 const (
 	testServer          = "bm-1"
+	listPath            = "/apps/v2/bare-metal"
 	testServerPath      = "/apps/v2/bare-metal/bm-1"
 	testNetworksPath    = testServerPath + "/private-networks"
 	testAccountPassword = "account-secret"
@@ -142,9 +143,9 @@ func (f *fakeAPI) order() []string {
 func fastWaits(t *testing.T) {
 	t.Helper()
 
-	poll, retry := pollInterval, retryInterval
+	poll, retry, bound := pollInterval, retryInterval, deployAnswerBound
 	pollInterval, retryInterval = time.Millisecond, time.Millisecond
-	t.Cleanup(func() { pollInterval, retryInterval = poll, retry })
+	t.Cleanup(func() { pollInterval, retryInterval, deployAnswerBound = poll, retry, bound })
 }
 
 // serverJSON is the GET /bare-metal/:id answer for testServer.
@@ -218,6 +219,15 @@ func noTimeouts() timeouts.Value {
 	})}
 }
 
+func stringList(values ...string) types.List {
+	elems := make([]attr.Value, 0, len(values))
+	for _, v := range values {
+		elems = append(elems, types.StringValue(v))
+	}
+
+	return types.ListValueMust(types.StringType, elems)
+}
+
 func stringSet(values ...string) types.Set {
 	elems := make([]attr.Value, 0, len(values))
 	for _, v := range values {
@@ -247,7 +257,7 @@ func plannedModel() bareMetalResourceModel {
 		ContractTerm:      unknown,
 		LinkSpeedMbps:     types.Int64Unknown(),
 		UserData:          types.StringNull(),
-		ScriptIdentifiers: types.SetNull(types.StringType),
+		ScriptIdentifiers: types.ListNull(types.StringType),
 		PrivateNetworkIDs: int64Set([]int64{7}),
 		ReleaseReason:     types.StringNull(),
 		ReleaseNote:       types.StringNull(),

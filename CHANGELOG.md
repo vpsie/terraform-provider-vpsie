@@ -13,8 +13,11 @@ FEATURES:
   `create` timeout. Hostname, project, administrator password (reset in place, with a wait) and private networks
   (attached and detached in place, with a wait) change without a new server; the plan, OS and other install-time
   inputs force a replacement. Destroy releases the server with the provider's `account_password` and waits for it to
-  leave the account. Orders are sent with an idempotency key and resent with the same key only when no answer
-  arrived, so a retry never buys a second server. Build-to-order servers stay in state as `pending_build` until
+  leave the account. Orders are sent with an idempotency key. An answer that leaves the outcome open (no answer,
+  502/503/504, a Cloudflare 52x, or the first attempt still running) is resent with the same key until the `create`
+  timeout; an order the API holds past its 300 s answer limit, or one still unconfirmed at the timeout, is looked up
+  by hostname in its datacenter and adopted, so a lost answer neither buys a second server nor leaves an untracked
+  one. `script_identifiers` is an ordered list: the scripts run at first boot in that order. Build-to-order servers stay in state as `pending_build` until
   delivery. Import adopts a server by identifier; the first apply takes the plan, OS and password from the
   configuration without replacing it.
 - **New Data Source:** `vpsie_bare_metal_plans` (hardware plans of a datacenter, filterable by RAM, disk and GPU)

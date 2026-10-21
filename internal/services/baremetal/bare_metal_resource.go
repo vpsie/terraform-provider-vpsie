@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -64,7 +65,7 @@ type bareMetalResourceModel struct {
 	ContractTerm      types.String   `tfsdk:"contract_term"`
 	LinkSpeedMbps     types.Int64    `tfsdk:"link_speed_mbps"`
 	UserData          types.String   `tfsdk:"user_data"`
-	ScriptIdentifiers types.Set      `tfsdk:"script_identifiers"`
+	ScriptIdentifiers types.List     `tfsdk:"script_identifiers"`
 	PrivateNetworkIDs types.Set      `tfsdk:"private_network_ids"`
 	ReleaseReason     types.String   `tfsdk:"release_reason"`
 	ReleaseNote       types.String   `tfsdk:"release_note"`
@@ -227,12 +228,20 @@ func (r *bareMetalResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Validators:    []validator.String{userDataValidator{}},
 				PlanModifiers: []planmodifier.String{replaceInstallInput()},
 			},
-			"script_identifiers": schema.SetAttribute{
-				Optional:            true,
-				ElementType:         types.StringType,
-				MarkdownDescription: install("Identifiers of the account's saved scripts to run on first boot (at most 5)."),
-				Validators:          []validator.Set{setvalidator.SizeAtMost(5)},
-				PlanModifiers:       []planmodifier.Set{replaceInstallInput()},
+			"script_identifiers": schema.ListAttribute{
+				Optional:    true,
+				ElementType: types.StringType,
+				MarkdownDescription: install("Identifiers of the account's saved scripts to run on first boot, in the listed " +
+					"order (at most 5, each once). Changing the order also orders a new server."),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(5),
+					listvalidator.UniqueValues(),
+					listvalidator.ValueStringsAre(
+						stringvalidator.LengthAtMost(64),
+						stringvalidator.RegexMatches(regexp.MustCompile(`^[A-Za-z0-9-]+$`), "must be a script identifier"),
+					),
+				},
+				PlanModifiers: []planmodifier.List{replaceInstallInput()},
 			},
 			"private_network_ids": schema.SetAttribute{
 				Optional:    true,
@@ -314,7 +323,7 @@ func (r *bareMetalResource) Schema(ctx context.Context, _ resource.SchemaRequest
 				Create:            true,
 				Update:            true,
 				Delete:            true,
-				CreateDescription: "How long to wait for the order and the OS install (default 60m).",
+				CreateDescription: "How long to wait for the order and the OS install (default 60m). An order whose answer is lost (no answer, 502/503/504, Cloudflare 52x) is resent with the same idempotency key within this time; one still unconfirmed at the end is looked up by hostname and adopted.",
 				UpdateDescription: "How long to wait for a password reset and private network changes (default 60m).",
 				DeleteDescription: "How long to wait for the release (default 30m).",
 			}),
@@ -571,18 +580,37 @@ func (r *bareMetalResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	deployment, err := deploy(ctx, r.client, order)
+	deployment, adopted, err := deploy(ctx, r.client, order)
 	if err != nil {
 		resp.Diagnostics.AddError("Error ordering bare-metal server", err.Error())
 		return
 	}
-	tflog.Info(ctx, "bare-metal server ordered", map[string]any{"identifier": deployment.Identifier, "status": deployment.Status})
+	tflog.Info(ctx, "bare-metal server ordered", map[string]any{"identifier": deployment.Identifier, "status": deployment.Status, "adopted": adopted})
 
 	// From here on the server exists: every exit saves the state, so a
 	// failed wait leaves a tainted resource that the next apply replaces or
 	// destroy releases, never an untracked server.
 	plannedHostname, plannedNetworks := plan.Hostname, plan.PrivateNetworkIDs
 	applyOrder(&plan, deployment)
+
+	if adopted {
+		resp.Diagnostics.AddWarning("Bare-metal order confirmed by lookup",
+			fmt.Sprintf("The API did not confirm the order, but server %s named %q appeared in datacenter %s after it was sent. "+
+				"Terraform adopted it instead of ordering another.", deployment.Identifier, plan.Hostname.ValueString(), plan.DcIdentifier.ValueString()))
+	}
+	if ctx.Err() != nil {
+		// Found by the last lookup after the create timeout: no time is left
+		// to wait for the install, so the server is saved as it reads now.
+		readCtx, cancelRead := context.WithTimeout(context.WithoutCancel(ctx), orderLookupTimeout)
+		defer cancelRead()
+		plan.PrivateNetworkIDs = types.SetUnknown(types.Int64Type)
+		r.refreshAfterError(readCtx, &plan, nil)
+		resp.Diagnostics.AddError("Bare-metal server found after the create timeout",
+			fmt.Sprintf("Server %s was found on the account after the create timeout and is saved in state as tainted. "+
+				"Once its OS is running, keep it with terraform untaint; otherwise the next apply replaces it.", deployment.Identifier))
+		resp.Diagnostics.Append(resp.State.Set(readCtx, &plan)...)
+		return
+	}
 
 	if deployment.Status == govpsie.BareMetalOrderPendingBuild {
 		resp.Diagnostics.AddWarning("Build-to-order server ordered",

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -18,19 +19,26 @@ import (
 // below bound how long a wait goes on while the API keeps failing.
 var (
 	// pollInterval is the pause between two reads of a server or of its
-	// private networks.
+	// private networks, and between two lookups of an unconfirmed order.
 	pollInterval = 30 * time.Second
 	// retryInterval is the pause before an order or a refused change is
 	// sent again.
 	retryInterval = 15 * time.Second
+	// deployAnswerBound is the longest the API takes to answer an order: its
+	// ingress timeout is 300 s and the deploy gives up by itself at 270 s.
+	// One attempt is cut off after it. A 409 bareMetalDeployInProgress that
+	// still comes back once this much time has passed since the first
+	// attempt means the API sold the server but could not store its answer
+	// (the key then stays in progress for 24 h), so the order is looked up
+	// by hostname from then on.
+	deployAnswerBound = 6 * time.Minute
+	// orderLookupTimeout bounds the last lookup of an order whose outcome is
+	// still unknown when the create timeout runs out, and the read of a
+	// server found that way.
+	orderLookupTimeout = time.Minute
 )
 
 const (
-	// maxDeployAttempts bounds how often one order is sent. Every attempt
-	// carries the same Idempotency-Key, so the API answers a repeat of an
-	// order that went through with that order instead of selling a second
-	// server.
-	maxDeployAttempts = 5
 	// maxConsecutiveReadFailures bounds the reads in a row that may fail
 	// (other than with 404) before a wait gives up.
 	maxConsecutiveReadFailures = 5
@@ -38,6 +46,10 @@ const (
 	// while waiting for an order that was sold from stock: such a server is
 	// readable at once, so a lasting 404 means it was taken back.
 	maxConsecutiveNotFound = 3
+	// minCloudflareStatus is the first of the 52x statuses Cloudflare answers
+	// with when the origin fails or is too slow (524 after 100 s); the
+	// request may still have reached the API.
+	minCloudflareStatus = 520
 )
 
 // API error codes the resource reacts to.
@@ -94,59 +106,172 @@ func hasCode(err error, status int, code string) bool {
 	return errors.As(err, &apiErr) && apiErr.StatusCode == status && apiErr.Code == code
 }
 
-// deployRetryable reports whether an order may be sent again with the same
-// Idempotency-Key: no answer arrived (transport failure), a gateway failed
-// (502/503/504), or the API still runs the first attempt of this key (409
-// bareMetalDeployInProgress). A plain 500 or any 4xx is a definite refusal.
-func deployRetryable(err error) bool {
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return false
-	}
-
+// orderOutcomeUnknown reports whether an answer to an order leaves open
+// whether the server was sold, so the order is sent again with the same
+// Idempotency-Key: no answer arrived (transport failure or the attempt was
+// cut off), a gateway or Cloudflare failed (502, 503, 504, 52x), or the API
+// still holds the key (409 bareMetalDeployInProgress). The API answers a
+// resend of an order that went through with that order's answer, and runs a
+// resend of an order that failed (the failure gave the key back) as a new
+// order. A plain 500 or any other 4xx is a definite refusal.
+func orderOutcomeUnknown(err error) bool {
 	var apiErr *govpsie.APIError
 	if !errors.As(err, &apiErr) {
 		return true
 	}
 
-	switch apiErr.StatusCode {
-	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+	switch {
+	case apiErr.StatusCode == http.StatusBadGateway,
+		apiErr.StatusCode == http.StatusServiceUnavailable,
+		apiErr.StatusCode == http.StatusGatewayTimeout,
+		apiErr.StatusCode >= minCloudflareStatus:
 		return true
-	case http.StatusConflict:
+	case apiErr.StatusCode == http.StatusConflict:
 		return apiErr.Code == codeDeployInProgress
 	default:
 		return false
 	}
 }
 
-// deploy sends the order, at most maxDeployAttempts times, all with one
-// Idempotency-Key.
-func deploy(ctx context.Context, client *govpsie.Client, req *govpsie.BareMetalDeployRequest) (*govpsie.BareMetalDeployment, error) {
-	key, err := newIdempotencyKey()
+// accountServers returns the identifiers of the account's servers, taken
+// before an order so that a lookup after it can tell the new server from
+// the existing ones. It returns nil when the list cannot be read; the order
+// then goes ahead, but cannot be adopted by a lookup.
+func accountServers(ctx context.Context, client *govpsie.Client) map[string]bool {
+	servers, err := client.BareMetal.List(ctx)
 	if err != nil {
-		return nil, err
+		tflog.Warn(ctx, "could not list the bare-metal servers before the order; an unconfirmed order cannot be looked up",
+			map[string]any{"error": err.Error()})
+		return nil
 	}
 
+	ids := make(map[string]bool, len(servers))
+	for _, s := range servers {
+		ids[s.Identifier] = true
+	}
+
+	return ids
+}
+
+// findOrder looks for the server an unconfirmed order sold: a server in the
+// order's datacenter, named with its hostname, that was not on the account
+// before the order. It returns nil when there is none, and an error when
+// the list cannot be read or the match is not unique.
+func findOrder(ctx context.Context, client *govpsie.Client, req *govpsie.BareMetalDeployRequest, before map[string]bool) (*govpsie.BareMetalSummary, error) {
+	if before == nil {
+		return nil, errors.New("the account's servers could not be listed before the order, so a new server cannot be told from an existing one")
+	}
+
+	servers, err := client.BareMetal.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("listing the account's servers: %w", err)
+	}
+
+	var found []govpsie.BareMetalSummary
+	for _, s := range servers {
+		if !before[s.Identifier] && s.DatacenterIdentifier == req.DCIdentifier && strings.EqualFold(s.MachineName, req.Hostname) {
+			found = append(found, s)
+		}
+	}
+
+	switch len(found) {
+	case 0:
+		return nil, nil
+	case 1:
+		return &found[0], nil
+	default:
+		ids := make([]string, 0, len(found))
+		for _, s := range found {
+			ids = append(ids, s.Identifier)
+		}
+		return nil, fmt.Errorf("%d new servers are named %q in datacenter %s: %s", len(found), req.Hostname, req.DCIdentifier, strings.Join(ids, ", "))
+	}
+}
+
+// adoptedOrder is the order answer of a server found by findOrder.
+func adoptedOrder(s *govpsie.BareMetalSummary) *govpsie.BareMetalDeployment {
+	return &govpsie.BareMetalDeployment{
+		Success:    true,
+		Identifier: s.Identifier,
+		OSPhase:    s.OSPhase,
+		IPAddress:  s.IPAddress,
+		Status:     govpsie.BareMetalOrderSold,
+	}
+}
+
+// deploy sends the order with one Idempotency-Key until the API answers it
+// or ctx (the create timeout) ends. An answer that leaves the outcome open
+// (orderOutcomeUnknown) is resent every retryInterval, so the number of
+// attempts is bounded by the create timeout divided by retryInterval; one
+// attempt lasts at most deployAnswerBound. Once the API has kept the key in
+// progress for longer than deployAnswerBound, every round also looks the
+// order up by hostname (findOrder), every pollInterval. When ctx ends with
+// the outcome still open, one last lookup runs within orderLookupTimeout. A
+// server found by a lookup is returned with adopted set; when none is
+// found the error names the hostname, so the user checks the account
+// before ordering again.
+func deploy(ctx context.Context, client *govpsie.Client, req *govpsie.BareMetalDeployRequest) (order *govpsie.BareMetalDeployment, adopted bool, err error) {
+	key, err := newIdempotencyKey()
+	if err != nil {
+		return nil, false, err
+	}
+
+	before := accountServers(ctx, client)
+	start := time.Now()
 	var lastErr error
-	for attempt := 1; attempt <= maxDeployAttempts; attempt++ {
+	for attempt := 1; ; attempt++ {
 		if attempt > 1 {
+			wait := retryInterval
+			if hasCode(lastErr, http.StatusConflict, codeDeployInProgress) && time.Since(start) > deployAnswerBound {
+				found, lookupErr := findOrder(ctx, client, req, before)
+				if found != nil {
+					return adoptedOrder(found), true, nil
+				}
+				if lookupErr != nil {
+					tflog.Warn(ctx, "could not look up the unconfirmed bare-metal order", map[string]any{"error": lookupErr.Error()})
+				}
+				wait = pollInterval
+			}
 			tflog.Warn(ctx, "bare-metal order not confirmed, sending it again with the same idempotency key",
-				map[string]any{"attempt": attempt, "max_attempts": maxDeployAttempts, "error": lastErr.Error()})
-			if err := sleep(ctx, retryInterval); err != nil {
-				return nil, timedOut(ctx, "the order to be accepted", lastErr)
+				map[string]any{"attempt": attempt, "error": lastErr.Error()})
+			if sleep(ctx, wait) != nil {
+				break
 			}
 		}
 
-		out, err := client.BareMetal.Deploy(ctx, req, key)
-		if err == nil {
-			return out, nil
+		attemptCtx, cancel := context.WithTimeout(ctx, deployAnswerBound)
+		out, sendErr := client.BareMetal.Deploy(attemptCtx, req, key)
+		cancel()
+		if sendErr == nil {
+			return out, false, nil
 		}
-		if !deployRetryable(err) {
-			return nil, err
+		lastErr = sendErr
+		if ctx.Err() != nil {
+			break
 		}
-		lastErr = err
+		if !orderOutcomeUnknown(sendErr) {
+			return nil, false, sendErr
+		}
 	}
 
-	return nil, fmt.Errorf("the order was not confirmed after %d attempts: %w", maxDeployAttempts, lastErr)
+	// The create timeout ran out with the outcome open: one last lookup, on
+	// a context of its own.
+	lookupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), orderLookupTimeout)
+	defer cancel()
+	found, lookupErr := findOrder(lookupCtx, client, req, before)
+	if found != nil {
+		return adoptedOrder(found), true, nil
+	}
+
+	lookup := "no new server with that name was found"
+	if lookupErr != nil {
+		lookup = "the lookup failed: " + lookupErr.Error()
+	}
+
+	return nil, false, fmt.Errorf("the order of server %q in datacenter %s was sent but not confirmed before the create timeout, "+
+		"and %s. It may still have been sold: check the bare-metal servers of the account before applying again, and "+
+		"import a server named %q with terraform import instead of ordering another (last error: %v)",
+		req.Hostname, req.DCIdentifier, lookup, req.Hostname, lastErr)
 }
 
 // waitForOS reads the server until its OS is running: after an order or a
