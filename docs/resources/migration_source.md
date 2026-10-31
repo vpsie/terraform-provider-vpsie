@@ -55,8 +55,9 @@ resource "vpsie_migration_source" "esxi" {
 
 Import is supported using the following syntax:
 
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
 ```shell
+# Credentials are not returned by the platform: after an import, set `credentials` in the configuration; the next apply rotates them.
 terraform import vpsie_migration_source.esxi source-identifier
 ```
-
-Credentials are not returned by the platform: after an import, set `credentials` in the configuration; the next apply rotates them.
