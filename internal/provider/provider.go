@@ -29,6 +29,7 @@ import (
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/kubernetes"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/loadbalancer"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/manageddb"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/migrate"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/monitoring"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/project"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/registry"
@@ -216,6 +217,7 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		firewall.NewFirewallAttachmentResource,
 		vpc.NewVpcServerAssignmentResource,
 		tag.NewTagResource,
+		migrate.NewMigrationSourceResource,
 		certificate.NewCertificateResource,
 		servergroup.NewServerGroupResource,
 		servergroup.NewServerGroupMemberResource,

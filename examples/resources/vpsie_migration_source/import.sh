@@ -1,0 +1,1 @@
+terraform import vpsie_migration_source.esxi source-identifier
