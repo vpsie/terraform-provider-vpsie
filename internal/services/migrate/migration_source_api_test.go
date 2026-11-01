@@ -132,3 +132,24 @@ func TestRotateAndDelete(t *testing.T) {
 		t.Errorf("calls = %v, want %v", seen, want)
 	}
 }
+
+func TestListAllPagesThroughEverySource(t *testing.T) {
+	api := testAPI(t, func(w http.ResponseWriter, r *http.Request) {
+		items := []map[string]any{}
+		n := 3
+		if r.URL.Query().Get("offset") == "0" {
+			n = 100
+		}
+		for i := 0; i < n; i++ {
+			items = append(items, map[string]any{"identifier": "s", "type": "vmware-esxi"})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": false, "data": map[string]any{"items": items}})
+	})
+	got, err := api.listAll(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 103 {
+		t.Errorf("got %d sources, want 103", len(got))
+	}
+}

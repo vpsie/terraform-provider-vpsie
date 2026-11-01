@@ -102,6 +102,27 @@ func (a *sourceAPI) get(ctx context.Context, identifier string) (*migrationSourc
 	return nil, nil
 }
 
+// listAll reads every source.
+func (a *sourceAPI) listAll(ctx context.Context) ([]migrationSource, error) {
+	const limit = 100
+	var all []migrationSource
+	for offset := 0; ; offset += limit {
+		req, err := a.client.NewRequest(ctx, http.MethodGet,
+			fmt.Sprintf("%s?limit=%d&offset=%d", sourcesPath, limit, offset), nil)
+		if err != nil {
+			return nil, err
+		}
+		var out sourceListEnvelope
+		if err := a.client.Do(ctx, req, &out); err != nil {
+			return nil, err
+		}
+		all = append(all, out.Data.Items...)
+		if len(out.Data.Items) < limit {
+			return all, nil
+		}
+	}
+}
+
 func (a *sourceAPI) listed(ctx context.Context, identifier string) (bool, error) {
 	const limit = 100
 	for offset := 0; ; offset += limit {
