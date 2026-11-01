@@ -69,7 +69,7 @@ func (f *fakePlatform) serve(w http.ResponseWriter, r *http.Request) {
 			"plan":       map[string]any{"identifier": nil, "name": nil},
 			"rpoMinutes": body["rpoMinutes"], "retention": body["retention"],
 			"immutabilityDays": 7, "consistency": "app", "verifyMode": "off",
-			"rtoTargetMinutes": body["rtoTargetMinutes"], "version": 1, "createdAt": "2026-11-01T00:00:00Z",
+			"rtoTargetMinutes": body["rtoTargetMinutes"], "version": float64(1), "createdAt": "2026-11-01T00:00:00Z",
 		}
 		if v, ok := body["immutabilityDays"]; ok {
 			p["immutabilityDays"] = v
@@ -95,7 +95,7 @@ func (f *fakePlatform) serve(w http.ResponseWriter, r *http.Request) {
 			fail(http.StatusNotFound)
 			return
 		}
-		if body["version"] != float64(p["version"].(int)) {
+		if body["version"] != p["version"] {
 			fail(http.StatusConflict)
 			return
 		}
@@ -104,7 +104,8 @@ func (f *fakePlatform) serve(w http.ResponseWriter, r *http.Request) {
 				p[k] = v
 			}
 		}
-		p["version"] = p["version"].(int) + 1
+		read, _ := body["version"].(float64)
+		p["version"] = read + 1
 		reply(http.StatusOK, p)
 	case r.Method == http.MethodDelete:
 		p, ok := f.policies[id]

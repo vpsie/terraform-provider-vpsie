@@ -68,11 +68,11 @@ func int64OneOf(values ...int64) validator.Int64 {
 }
 
 func (r *policyResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	keepAttr := func(desc string, max int64) schema.Int64Attribute {
+	keepAttr := func(desc string, upper int64) schema.Int64Attribute {
 		return schema.Int64Attribute{
 			MarkdownDescription: desc,
 			Required:            true,
-			Validators:          []validator.Int64{int64validator.Between(0, max)},
+			Validators:          []validator.Int64{int64validator.Between(0, upper)},
 		}
 	}
 	resp.Schema = schema.Schema{
