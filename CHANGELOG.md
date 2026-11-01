@@ -2,7 +2,12 @@
 
 FEATURES:
 
+- **New Resource:** `vpsie_protect_policy` (Backup and Protect policy: tier, RPO, retention, immutability, consistency, boot checks, RTO target; edits carry the policy version; import by identifier)
+- **New Resource:** `vpsie_file_share` (NFS file share on a VPC: size, access list; create, resize and delete wait for the platform; import by identifier)
+- **New Data Source:** `vpsie_protect_policies`, `vpsie_file_shares`, `vpsie_migration_sources`, `vpsie_control_platforms`, `vpsie_control_collectors`
 - **New Resource:** `vpsie_tag`
+- **New Resource:** `vpsie_migration_source`: registers a Migrate source (any of the platform's source types) with its
+  settings and sensitive credentials; credentials rotate in place. Migration jobs, Control platforms and Protect protected servers are not covered.
 - **New Resource:** `vpsie_certificate`
 - **New Resource:** `vpsie_server_group`
 - **New Resource:** `vpsie_server_group_member`

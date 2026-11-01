@@ -19,8 +19,10 @@ import (
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/backup"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/bucket"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/certificate"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/control"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/datacenter"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/domain"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/files"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/fip"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/firewall"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/gateway"
@@ -29,8 +31,10 @@ import (
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/kubernetes"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/loadbalancer"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/manageddb"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/migrate"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/monitoring"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/project"
+	"github.com/vpsie/terraform-provider-vpsie/internal/services/protect"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/registry"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/script"
 	"github.com/vpsie/terraform-provider-vpsie/internal/services/server"
@@ -216,6 +220,9 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		firewall.NewFirewallAttachmentResource,
 		vpc.NewVpcServerAssignmentResource,
 		tag.NewTagResource,
+		migrate.NewMigrationSourceResource,
+		protect.NewPolicyResource,
+		files.NewShareResource,
 		certificate.NewCertificateResource,
 		servergroup.NewServerGroupResource,
 		servergroup.NewServerGroupMemberResource,
@@ -251,6 +258,11 @@ func (p *VpsieProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		accesstoken.NewAccessTokenDataSource,
 		ip.NewIPDataSource,
 		tag.NewTagDataSource,
+		migrate.NewMigrationSourcesDataSource,
+		protect.NewPoliciesDataSource,
+		files.NewSharesDataSource,
+		control.NewPlatformsDataSource,
+		control.NewCollectorsDataSource,
 		certificate.NewCertificateDataSource,
 		servergroup.NewServerGroupDataSource,
 		registry.NewRegistryDataSource,
