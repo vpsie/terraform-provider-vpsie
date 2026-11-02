@@ -8,6 +8,7 @@ FEATURES:
 - **New Resource:** `vpsie_file_share_smb` (turns SMB on or off on a file share and sets the SMB users it grants; the platform reports the switch but not the grants)
 - **New Resource:** `vpsie_protected_server` (one server of a Migrate source protected under a policy; pause and resume in place; destroy ends the protection; no import because the platform does not return the source reference; Control platforms and file imports stay in the portal and the API)
 - **New Data Source:** `vpsie_protect_policies`, `vpsie_file_shares`, `vpsie_migration_sources`, `vpsie_control_platforms`, `vpsie_control_collectors`
+- **New Data Source:** `vpsie_protected_servers` (every protected server of the account, optional state filter), `vpsie_file_smb_users` (SMB users of the Files service; never a password)
 - **New Resource:** `vpsie_tag`
 - **New Resource:** `vpsie_migration_source`: registers a Migrate source (any of the platform's source types) with its
   settings and sensitive credentials; credentials rotate in place. Migration jobs, Control platforms and Protect protected servers are not covered.

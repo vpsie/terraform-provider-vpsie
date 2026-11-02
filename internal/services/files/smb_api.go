@@ -56,6 +56,14 @@ func (s *shareAPI) createSmbUser(ctx context.Context, body smbUserRequest) (*smb
 	return &out.Data, nil
 }
 
+func (s *shareAPI) listSmbUsers(ctx context.Context) ([]smbUser, error) {
+	var out smbUserListEnvelope
+	if err := s.api.Call(ctx, rawapi.Get, smbUsersPath, nil, &out); err != nil {
+		return nil, err
+	}
+	return out.Data, nil
+}
+
 // getSmbUser returns nil when the account no longer has the user. The API has
 // no read by identifier, so the account's list is searched.
 func (s *shareAPI) getSmbUser(ctx context.Context, identifier string) (*smbUser, error) {
