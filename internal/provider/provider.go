@@ -222,6 +222,7 @@ func (p *VpsieProvider) Resources(ctx context.Context) []func() resource.Resourc
 		tag.NewTagResource,
 		migrate.NewMigrationSourceResource,
 		protect.NewPolicyResource,
+		protect.NewServerResource,
 		files.NewShareResource,
 		files.NewSmbUserResource,
 		files.NewSmbShareResource,
