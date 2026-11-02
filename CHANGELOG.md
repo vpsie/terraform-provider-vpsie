@@ -3,6 +3,8 @@
 FEATURES:
 
 - **New Resource:** `vpsie_tag`
+- **New Resource:** `vpsie_migration_source`: registers a Migrate source (any of the platform's source types) with its
+  settings and sensitive credentials; credentials rotate in place. Migration jobs and Protect resources are not covered.
 - **New Resource:** `vpsie_certificate`
 - **New Resource:** `vpsie_server_group`
 - **New Resource:** `vpsie_server_group_member`
