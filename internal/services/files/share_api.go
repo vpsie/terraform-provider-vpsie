@@ -36,6 +36,11 @@ type mount struct {
 
 // share is a file share as the API presents it to a customer. The VPC id is
 // not part of it.
+type protocols struct {
+	NFS bool `json:"nfs"`
+	SMB bool `json:"smb"`
+}
+
 type share struct {
 	Identifier   string        `json:"identifier"`
 	Name         string        `json:"name"`
@@ -49,6 +54,7 @@ type share struct {
 	Gateway      *gateway      `json:"gateway"`
 	Access       []accessEntry `json:"access"`
 	Mount        *mount        `json:"mount"`
+	Protocols    *protocols    `json:"protocols"`
 }
 
 type shareEnvelope struct {
