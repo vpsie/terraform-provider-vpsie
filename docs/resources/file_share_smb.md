@@ -3,7 +3,7 @@
 page_title: "vpsie_file_share_smb Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  SMB access of a file share: whether the share is served over SMB and which SMB users it grants (`vpsie_file_smb_user`). The users must belong to the VPC the share is served in. An enabled share needs at least one user. The platform reports whether SMB is on but not the granted users, so a change to the users made outside Terraform is not detected. Destroying the resource turns SMB off and removes every grant. Needs the `fileStorage` licence module.
+  SMB access of a file share: whether the share is served over SMB and which SMB users it grants (vpsie_file_smb_user). The users must belong to the VPC the share is served in. An enabled share needs at least one user. The platform reports whether SMB is on but not the granted users, so a change to the users made outside Terraform is not detected. Destroying the resource turns SMB off and removes every grant. Needs the fileStorage licence module.
 ---
 
 # vpsie_file_share_smb (Resource)

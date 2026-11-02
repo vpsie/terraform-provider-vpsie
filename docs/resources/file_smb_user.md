@@ -3,7 +3,7 @@
 page_title: "vpsie_file_smb_user Resource - terraform-provider-vpsie"
 subcategory: ""
 description: |-
-  An SMB user of the Files service: a name and password that may be granted on SMB shares served in one VPC. Name the VPC with `dc_identifier` and `vpc_id`, or name a share with `share_identifier` to take the VPC that share is served in. The platform keeps only a hash of the password, so the password is never read back: it stays in the Terraform state (marked sensitive) as configured, and changing it sets a new password and ends the user's open sessions. Grant the user on a share with `vpsie_file_share_smb`. Needs the `fileStorage` licence module.
+  An SMB user of the Files service: a name and password that may be granted on SMB shares served in one VPC. Name the VPC with dc_identifier and vpc_id, or name a share with share_identifier to take the VPC that share is served in. The platform keeps only a hash of the password, so the password is never read back: it stays in the Terraform state (marked sensitive) as configured, and changing it sets a new password and ends the user's open sessions. Grant the user on a share with vpsie_file_share_smb. Needs the fileStorage licence module.
 ---
 
 # vpsie_file_smb_user (Resource)

@@ -278,7 +278,8 @@ func TestSmbShareLifecycle(t *testing.T) {
 		t.Fatalf("delete: %v", delResp.Diagnostics)
 	}
 	off := fake.bodies["PUT /apps/v2/files/shares/sh-1/smb"]
-	if off["enabled"] != false || len(off["users"].([]any)) != 0 {
+	offUsers, ok := off["users"].([]any)
+	if !ok || off["enabled"] != false || len(offUsers) != 0 {
 		t.Errorf("delete body = %v", off)
 	}
 }
