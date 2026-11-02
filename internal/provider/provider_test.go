@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
 
 func newProvider() provider.Provider {
@@ -59,6 +61,42 @@ func TestProvider_ResourcesAndDataSources(t *testing.T) {
 	for i, fn := range dataSources {
 		if fn == nil || fn() == nil {
 			t.Errorf("data source constructor %d produced nil", i)
+		}
+	}
+}
+
+// Every resource and data source must have a schema the framework accepts,
+// and a type name that is unique: both are otherwise found only at plan time.
+func TestProvider_SchemasAreValidAndTypeNamesUnique(t *testing.T) {
+	ctx := context.Background()
+	p := newProvider()
+	seen := map[string]bool{}
+	for i, fn := range p.Resources(ctx) {
+		r := fn()
+		var meta resource.MetadataResponse
+		r.Metadata(ctx, resource.MetadataRequest{ProviderTypeName: "vpsie"}, &meta)
+		if seen["r:"+meta.TypeName] {
+			t.Errorf("resource %s registered twice", meta.TypeName)
+		}
+		seen["r:"+meta.TypeName] = true
+		var sch resource.SchemaResponse
+		r.Schema(ctx, resource.SchemaRequest{}, &sch)
+		if d := sch.Schema.ValidateImplementation(ctx); sch.Diagnostics.HasError() || d.HasError() {
+			t.Errorf("resource %d (%s) schema invalid: %v %v", i, meta.TypeName, sch.Diagnostics, d)
+		}
+	}
+	for i, fn := range p.DataSources(ctx) {
+		d := fn()
+		var meta datasource.MetadataResponse
+		d.Metadata(ctx, datasource.MetadataRequest{ProviderTypeName: "vpsie"}, &meta)
+		if seen["d:"+meta.TypeName] {
+			t.Errorf("data source %s registered twice", meta.TypeName)
+		}
+		seen["d:"+meta.TypeName] = true
+		var sch datasource.SchemaResponse
+		d.Schema(ctx, datasource.SchemaRequest{}, &sch)
+		if diags := sch.Schema.ValidateImplementation(ctx); sch.Diagnostics.HasError() || diags.HasError() {
+			t.Errorf("data source %d (%s) schema invalid: %v %v", i, meta.TypeName, sch.Diagnostics, diags)
 		}
 	}
 }
