@@ -2,11 +2,19 @@
 name: Release
 
 # This GitHub action creates a release when a tag that matches the pattern
-# "v*" (e.g. v0.1.0) is created.
+# "v*" (e.g. v0.1.0) is created. A manual run (workflow_dispatch) or a pull
+# request that changes the release setup builds a signed snapshot instead:
+# it imports the signing key, builds and signs the checksums, verifies the
+# signature and publishes nothing.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - '.goreleaser.yml'
 
 # Releases need permissions to read and write the repository contents.
 # GitHub considers creating releases and uploading assets as writing contents.
@@ -15,6 +23,9 @@ permissions:
 
 jobs:
   goreleaser:
+    # Pull requests from forks get no secrets, so the signing dry run is
+    # limited to branches of this repository.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -35,8 +46,17 @@ jobs:
         uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
           version: '~> v2'
-          args: release --clean
+          args: ${{ startsWith(github.ref, 'refs/tags/v') && 'release --clean' || 'release --snapshot --clean --skip=publish' }}
         env:
           # GitHub sets the GITHUB_TOKEN secret automatically.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+      - name: Verify snapshot signature
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+        run: |
+          set -euo pipefail
+          sums=$(ls dist/*_SHA256SUMS)
+          gpg --status-fd 1 --verify "${sums}.sig" "${sums}" | grep -q "VALIDSIG ${GPG_FINGERPRINT}"
+          echo "SHA256SUMS signature valid for key ${GPG_FINGERPRINT}"

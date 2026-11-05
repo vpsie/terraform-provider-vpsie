@@ -25,6 +25,9 @@ FEATURES:
 
 BUG FIXES:
 
+- **`vpsie_server_group`:** create now records the group it created (the identifier
+  that appears after the create call) instead of the first group with the same
+  name, which could be an older group.
 - **`vpsie_managed_database`:** cluster creation never worked — it sent `name`,
   `db_type`, and a numeric `plan_id`, but the API wants `clusterName`, an offer
   `resourceIdentifier`, `nodesCount`, a numeric `vpcId`, and `projectIdentifier`
