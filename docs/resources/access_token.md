@@ -15,7 +15,6 @@ description: |-
 ```terraform
 resource "vpsie_access_token" "example" {
   name            = "my-api-token"
-  access_token    = "your-access-token"
   expiration_date = "2025-12-31"
 }
 ```
@@ -25,7 +24,6 @@ resource "vpsie_access_token" "example" {
 
 ### Required
 
-- `access_token` (String, Sensitive)
 - `expiration_date` (String)
 - `name` (String)
 
@@ -35,5 +33,6 @@ resource "vpsie_access_token" "example" {
 
 ### Read-Only
 
+- `access_token` (String, Sensitive) The token value. The API generates it and returns it only once, at creation; it is kept in the state and cannot be read back.
 - `created_on` (String)
 - `identifier` (String)

@@ -56,10 +56,12 @@ func (a *accessTokenResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Required: true,
 			},
 			"access_token": schema.StringAttribute{
-				Required:  true,
+				MarkdownDescription: "The token value. The API generates it and returns it only once, at creation; " +
+					"it is kept in the state and cannot be read back.",
+				Computed:  true,
 				Sensitive: true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"expiration_date": schema.StringAttribute{
@@ -108,11 +110,12 @@ func (a *accessTokenResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	err := a.client.AccessToken.Create(ctx, plan.Name.ValueString(), plan.AccessToken.ValueString(), plan.ExpirationDate.ValueString(), plan.Status.ValueString())
+	value, err := a.client.AccessToken.Create(ctx, plan.Name.ValueString(), plan.ExpirationDate.ValueString(), plan.Status.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating access token", err.Error())
 		return
 	}
+	plan.AccessToken = types.StringValue(value)
 
 	token, err := a.GetTokenByName(ctx, plan.Name.ValueString())
 	if err != nil {
