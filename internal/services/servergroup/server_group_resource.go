@@ -117,7 +117,25 @@ func (s *serverGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	err := s.client.ServerGroup.Create(ctx, plan.GroupName.ValueString(), plan.GroupDescription.ValueString(), plan.IsDistributed.ValueBool())
+	// The create endpoint returns no identifier, so remember the identifiers that
+	// exist before the call and resolve the new group as the one that appears
+	// afterwards. Matching by name alone could adopt an older group with the
+	// same name.
+	before, err := s.client.ServerGroup.List(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating server group",
+			"couldn't list existing server groups, unexpected error: "+err.Error(),
+		)
+
+		return
+	}
+	known := make(map[string]struct{}, len(before))
+	for i := range before {
+		known[before[i].Identifier] = struct{}{}
+	}
+
+	err = s.client.ServerGroup.Create(ctx, plan.GroupName.ValueString(), plan.GroupDescription.ValueString(), plan.IsDistributed.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating server group",
@@ -127,7 +145,7 @@ func (s *serverGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	group, err := s.getGroupByName(ctx, plan.GroupName.ValueString())
+	group, err := s.getNewGroup(ctx, plan.GroupName.ValueString(), known)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating server group",
@@ -228,19 +246,32 @@ func (s *serverGroupResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("identifier"), req, resp)
 }
 
-func (s *serverGroupResource) getGroupByName(ctx context.Context, name string) (*govpsie.ServerGroup, error) {
+// getNewGroup returns the group named name whose identifier is not in known.
+func (s *serverGroupResource) getNewGroup(ctx context.Context, name string, known map[string]struct{}) (*govpsie.ServerGroup, error) {
 	groups, err := s.client.ServerGroup.List(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	var found *govpsie.ServerGroup
 	for i := range groups {
-		if groups[i].GroupName == name {
-			return &groups[i], nil
+		if groups[i].GroupName != name {
+			continue
 		}
+		if _, ok := known[groups[i].Identifier]; ok {
+			continue
+		}
+		if found != nil {
+			return nil, fmt.Errorf("several new server groups named %q appeared, cannot tell which one was created", name)
+		}
+		found = &groups[i]
 	}
 
-	return nil, fmt.Errorf("server group %q not found", name)
+	if found == nil {
+		return nil, fmt.Errorf("new server group %q not found", name)
+	}
+
+	return found, nil
 }
 
 func (s *serverGroupResource) getGroupByIdentifier(ctx context.Context, identifier string) (*govpsie.ServerGroup, error) {
