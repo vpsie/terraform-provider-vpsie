@@ -171,9 +171,20 @@ func (s *serverGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	// The group's configurable attributes are immutable (RequiresReplace), so
-	// only the computed created_on is refreshed here; the rest are kept as-is to
-	// avoid spurious diffs if the API normalizes a value.
+	// The group's configurable attributes are immutable (RequiresReplace), so a
+	// managed group keeps its configured values to avoid spurious replacements if
+	// the API normalizes a value. After an import only the identifier is set:
+	// those attributes are then taken from the API, otherwise the next plan
+	// would replace (destroy) the imported group.
+	if state.GroupName.IsNull() || state.GroupName.IsUnknown() {
+		state.GroupName = types.StringValue(group.GroupName)
+	}
+	if state.GroupDescription.IsNull() || state.GroupDescription.IsUnknown() {
+		state.GroupDescription = types.StringValue(group.GroupDescription)
+	}
+	if state.IsDistributed.IsNull() || state.IsDistributed.IsUnknown() {
+		state.IsDistributed = types.BoolValue(group.IsDistributed)
+	}
 	state.CreatedOn = types.StringValue(group.CreatedOn)
 
 	diags = resp.State.Set(ctx, &state)
